@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .animate-progress {
+    animation: progress 2s ease-in-out infinite;
+  }
+}
+
+@keyframes progress {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+/* 
+body {
+  @apply bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-white;
+} */
+
+

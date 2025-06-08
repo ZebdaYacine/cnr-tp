@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: cnr-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: cnr_db
+      MYSQL_USER: cnr_user
+      MYSQL_PASSWORD: cnr_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - cnr-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cnr-backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=cnr_user
+      - DB_PASSWORD=cnr_password
+      - DB_NAME=cnr_db
+      - JWT_SECRET=your-secret-key
+    networks:
+      - cnr-network
+
+networks:
+  cnr-network:
+    driver: bridge
+
+volumes:
+  mysql_data: 
