@@ -29,7 +29,7 @@ type PensionRepository interface {
 	FindAll(page, limit int) ([]PensionData, int64, error)
 	Update(pension *PensionData) error
 	Delete(id uint) error
-	GetRiskLevelStats(wilaya string) ([]RiskLevelStats, error)
+	GetRiskLevelStats(wilaya string, categories []string, avantages []string) ([]RiskLevelStats, error)
 }
 
 type PensionUseCase interface {
@@ -38,7 +38,7 @@ type PensionUseCase interface {
 	GetAllPensions(page, limit int) ([]PensionData, int64, error)
 	UpdatePension(pension *PensionData) error
 	DeletePension(id uint) error
-	GetRiskLevelStats(wilaya string) ([]RiskLevelStats, error)
+	GetRiskLevelStats(wilaya string, categories []string, avantages []string) ([]RiskLevelStats, error)
 }
 
 type RiskLevelStats struct {

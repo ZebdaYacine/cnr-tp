@@ -54,7 +54,7 @@ func (r *pensionRepository) Delete(id uint) error {
 	return r.db.Delete(&domain.PensionData{}, id).Error
 }
 
-func (r *pensionRepository) GetRiskLevelStats(wilaya string) ([]domain.RiskLevelStats, error) {
+func (r *pensionRepository) GetRiskLevelStats(wilaya string, categories []string, avantages []string) ([]domain.RiskLevelStats, error) {
 	var stats []domain.RiskLevelStats
 	var total int64
 
@@ -62,6 +62,14 @@ func (r *pensionRepository) GetRiskLevelStats(wilaya string) ([]domain.RiskLevel
 
 	if wilaya != "" {
 		db = db.Where("ag = ?", wilaya)
+	}
+
+	if len(categories) > 0 {
+		db = db.Where("etatpens IN (?)", categories)
+	}
+
+	if len(avantages) > 0 {
+		db = db.Where("avt IN (?) OR (avt = 0 AND ?)", avantages, contains(avantages, "(Vide)"))
 	}
 
 	// Get total count for percentage calculation
@@ -107,4 +115,14 @@ func (r *pensionRepository) GetRiskLevelStats(wilaya string) ([]domain.RiskLevel
 	}
 
 	return stats, nil
+}
+
+// Helper function to check if a string is in a slice
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }

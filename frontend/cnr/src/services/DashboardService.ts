@@ -109,7 +109,9 @@ const DashboardService = {
   getRiskLevelStats: async (
     token: string,
     role: string,
-    wilaya?: string
+    wilaya?: string,
+    categories?: string[],
+    avantages?: string[]
   ): Promise<RiskLevelStats[]> => {
     if (!token) {
       throw new Error("No authentication token provided");
@@ -122,6 +124,16 @@ const DashboardService = {
       const queryParams = new URLSearchParams();
       if (wilaya) {
         queryParams.append("wilaya", wilaya);
+      }
+      if (categories && categories.length > 0) {
+        categories.forEach((category) =>
+          queryParams.append("categories", category)
+        );
+      }
+      if (avantages && avantages.length > 0) {
+        avantages.forEach((avantage) =>
+          queryParams.append("avantages", avantage)
+        );
       }
 
       const endpoint =

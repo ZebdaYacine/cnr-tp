@@ -64,7 +64,11 @@ interface DashboardContextType {
   setPage: (page: number, wilaya?: string) => void;
   setLimit: (limit: number, wilaya?: string) => void;
   riskLevelStats: RiskLevelStats[] | null;
-  refreshRiskStats: (wilaya?: string) => Promise<void>;
+  refreshRiskStats: (
+    wilaya?: string,
+    categories?: string[],
+    avantages?: string[]
+  ) => Promise<void>;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(
@@ -111,15 +115,27 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const fetchRiskLevelStats = useCallback(
-    async (wilaya?: string) => {
+    async (
+      wilaya?: string,
+      categories?: string[],
+      avantages?: string[]
+    ) => {
       if (!token || !user?.role) return;
 
       try {
-        const stats = await DashboardService.getRiskLevelStats(token, user.role, wilaya);
+        const stats = await DashboardService.getRiskLevelStats(
+          token,
+          user.role,
+          wilaya,
+          categories,
+          avantages
+        );
         setRiskLevelStats(stats);
       } catch (err) {
         console.error("Error fetching risk level stats:", err);
         setError(err instanceof Error ? err.message : "An error occurred");
+      } finally {
+        setLoading(false);
       }
     },
     [token, user?.role]
@@ -161,8 +177,12 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const refreshRiskStats = useCallback(
-    async (wilaya?: string) => {
-      fetchRiskLevelStats(wilaya);
+    async (
+      wilaya?: string,
+      categories?: string[],
+      avantages?: string[]
+    ) => {
+      fetchRiskLevelStats(wilaya, categories, avantages);
     },
     [fetchRiskLevelStats]
   );

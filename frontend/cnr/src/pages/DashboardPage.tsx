@@ -1,4 +1,4 @@
-import React, { useState, useMemo, PureComponent } from "react";
+import React, { useState, useMemo, PureComponent, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import {
   useDashboard,
@@ -149,11 +149,15 @@ const DashboardPage: React.FC = () => {
       setSelectedWilaya(null);
       setAgFilter("");
       refreshData(1, pagination?.limit || 10);
-      refreshRiskStats();
+      refreshRiskStats(undefined, selectedCategories, selectedAvantages);
     } else {
       setSelectedWilaya({ name: wilaya, code: wilayaCode || 0 });
       refreshData(1, pagination?.limit || 10, wilaya);
-      refreshRiskStats(wilayaCode.toString());
+      refreshRiskStats(
+        wilayaCode.toString(),
+        selectedCategories,
+        selectedAvantages
+      );
     }
   };
 
@@ -176,27 +180,39 @@ const DashboardPage: React.FC = () => {
   ];
 
   const handleCategoryChange = (category: string) => {
-    setSelectedCategories((prevSelected) =>
-      prevSelected.includes(category)
+    setSelectedCategories((prevSelected) => {
+      const newSelected = prevSelected.includes(category)
         ? prevSelected.filter((c) => c !== category)
-        : [...prevSelected, category]
-    );
+        : [...prevSelected, category];
+      refreshRiskStats(
+        selectedWilaya?.code.toString(),
+        newSelected,
+        selectedAvantages
+      );
+      return newSelected;
+    });
   };
 
   const handleAvantageChange = (avantage: string) => {
-    if (avantage === "Sélectionner tout") {
-      setSelectedAvantages((prevSelected) =>
-        prevSelected.length === avantageOptions.length
-          ? []
-          : avantageOptions.filter((opt) => opt !== "(Vide)")
-      );
-    } else {
-      setSelectedAvantages((prevSelected) =>
-        prevSelected.includes(avantage)
+    setSelectedAvantages((prevSelected) => {
+      let newSelected: string[];
+      if (avantage === "Sélectionner tout") {
+        newSelected =
+          prevSelected.length === avantageOptions.length
+            ? []
+            : avantageOptions.filter((opt) => opt !== "(Vide)");
+      } else {
+        newSelected = prevSelected.includes(avantage)
           ? prevSelected.filter((a) => a !== avantage)
-          : [...prevSelected, avantage]
+          : [...prevSelected, avantage];
+      }
+      refreshRiskStats(
+        selectedWilaya?.code.toString(),
+        selectedCategories,
+        newSelected
       );
-    }
+      return newSelected;
+    });
   };
 
   const getAvantageLabel = (avtCode: number): string => {
@@ -296,6 +312,11 @@ const DashboardPage: React.FC = () => {
 
   const handleRefresh = () => {
     refreshData(1, pagination?.limit || 10, selectedWilaya?.name || undefined);
+    refreshRiskStats(
+      selectedWilaya?.code.toString(),
+      selectedCategories,
+      selectedAvantages
+    );
   };
 
   const data: WilayaMap = {
@@ -363,6 +384,21 @@ const DashboardPage: React.FC = () => {
     { name: "MAL", value: 4000 },
     { name: "FEMEL", value: 1240 },
   ];
+
+  useEffect(() => {
+    refreshData();
+    refreshRiskStats(
+      selectedWilaya?.code.toString(),
+      selectedCategories,
+      selectedAvantages
+    );
+  }, [
+    refreshData,
+    refreshRiskStats,
+    selectedWilaya,
+    selectedCategories,
+    selectedAvantages,
+  ]);
 
   return (
     <div className="min-h-screen bg-gray-100">

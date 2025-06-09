@@ -107,9 +107,11 @@ func (h *PensionHandler) DeletePension(c *gin.Context) {
 
 // GetRiskLevelStats handles fetching risk level statistics
 func (h *PensionHandler) GetRiskLevelStats(c *gin.Context) {
-	wilaya := c.Query("wilaya") // Get wilaya from query parameter
+	wilaya := c.Query("wilaya")              // Get wilaya from query parameter
+	categories := c.QueryArray("categories") // Get categories from query parameter
+	avantages := c.QueryArray("avantages")   // Get avantages from query parameter
 
-	stats, err := h.pensionUseCase.GetRiskLevelStats(wilaya)
+	stats, err := h.pensionUseCase.GetRiskLevelStats(wilaya, categories, avantages)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch risk level statistics"})
 		return

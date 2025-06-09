@@ -44,7 +44,7 @@ func TestGetRiskLevelStats(t *testing.T) {
 	// }
 
 	// Test case 1: Get all risk level stats (no wilaya filter)
-	stats, err := pensionRepo.GetRiskLevelStats("")
+	stats, err := pensionRepo.GetRiskLevelStats("", []string{}, []string{})
 	// assert.NoError(t, err)
 	// assert.Len(t, stats, 3)
 
@@ -74,7 +74,7 @@ func TestGetRiskLevelStats(t *testing.T) {
 	assert.InDelta(t, 20.0, hautRisque.Percentage, 0.01)
 
 	// Test case 2: Get risk level stats for a specific wilaya (Algiers)
-	statsAlgiers, err := pensionRepo.GetRiskLevelStats("Algiers")
+	statsAlgiers, err := pensionRepo.GetRiskLevelStats("Algiers", []string{}, []string{})
 	assert.NoError(t, err)
 	assert.Len(t, statsAlgiers, 2)
 
@@ -89,7 +89,7 @@ func TestGetRiskLevelStats(t *testing.T) {
 	assert.InDelta(t, 33.33, hautRisqueAlgiers.Percentage, 0.01)
 
 	// Test case 3: Get risk level stats for a specific wilaya (Oran)
-	statsOran, err := pensionRepo.GetRiskLevelStats("Oran")
+	statsOran, err := pensionRepo.GetRiskLevelStats("Oran", []string{}, []string{})
 	assert.NoError(t, err)
 	assert.Len(t, statsOran, 2)
 
@@ -104,7 +104,7 @@ func TestGetRiskLevelStats(t *testing.T) {
 	assert.InDelta(t, 50.0, hautRisqueOran.Percentage, 0.01)
 
 	// Test case 4: Get risk level stats for a non-existent wilaya
-	statsNonExistent, err := pensionRepo.GetRiskLevelStats("NonExistent")
+	statsNonExistent, err := pensionRepo.GetRiskLevelStats("NonExistent", []string{}, []string{})
 	assert.NoError(t, err)
 	assert.Len(t, statsNonExistent, 0)
 }

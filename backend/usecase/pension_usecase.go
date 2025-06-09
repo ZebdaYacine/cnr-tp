@@ -30,6 +30,6 @@ func (u *pensionUseCase) DeletePension(id uint) error {
 	return u.pensionRepo.Delete(id)
 }
 
-func (u *pensionUseCase) GetRiskLevelStats(wilaya string) ([]domain.RiskLevelStats, error) {
-	return u.pensionRepo.GetRiskLevelStats(wilaya)
+func (u *pensionUseCase) GetRiskLevelStats(wilaya string, categories []string, avantages []string) ([]domain.RiskLevelStats, error) {
+	return u.pensionRepo.GetRiskLevelStats(wilaya, categories, avantages)
 }
