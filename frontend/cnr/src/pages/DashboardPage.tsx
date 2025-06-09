@@ -1,24 +1,15 @@
-import React, { useState, useMemo, PureComponent, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import {
   useDashboard,
   type RiskLevelStats,
 } from "../contexts/DashboardContext";
 import { Map } from "algeria-map-ts";
-import {
-  BarChart,
-  Bar,
-  Rectangle,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
+import { Tooltip, Legend, ResponsiveContainer } from "recharts";
+
+import RiskClusterDisplay from "../components/RiskClusterDisplay";
+import RiskPieChart from "../components/RiskPieChart";
+import FilterSection from "../components/FilterSection";
 
 interface WilayaInfo {
   name: string;
@@ -33,92 +24,6 @@ interface WilayaData {
 type WilayaMap = {
   [key: string]: WilayaData;
 };
-
-interface RiskClusterDisplayProps {
-  data: RiskLevelStats[] | null;
-}
-
-const RiskClusterDisplay: React.FC<RiskClusterDisplayProps> = ({ data }) => {
-  if (!data || data.length === 0) {
-    return (
-      <div className="text-center py-4 text-gray-500">
-        No risk level data available.
-      </div>
-    );
-  }
-
-  const riskColors: { [key: string]: string } = {
-    "Bas risque": "bg-green-500",
-    "Haut risque": "bg-red-500",
-    "Moyen risque": "bg-yellow-500",
-  };
-
-  return (
-    <div className="bg-white shadow rounded-lg p-6 mb-6">
-      <h2 className="text-xl font-bold text-gray-900 mb-4">
-        Nombre de cas TP par cluster
-      </h2>
-      <div className="space-y-4">
-        {data.map((item) => (
-          <div key={item.riskLevel} className="flex items-center space-x-4">
-            <div className="w-32 text-right text-gray-700 font-medium">
-              {item.riskLevel}
-            </div>
-            <div className="flex-grow bg-gray-200 rounded-full h-8 flex items-center justify-end overflow-hidden">
-              <div
-                className={`${
-                  riskColors[item.riskLevel]
-                } h-full rounded-full flex items-center justify-center text-white font-bold text-sm pr-2`}
-                style={{ width: `${item.percentage}%` }}
-              >
-                {item.percentage.toFixed(0)}%
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-interface ChartDataItem {
-  name: string;
-  value: number;
-}
-
-interface ExampleProps {
-  data: ChartDataItem[];
-}
-
-const COLORS = ["#0088FE", "#FFBB28"];
-
-function Example({ data }: ExampleProps) {
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <PieChart width={400} height={400}>
-        <Pie
-          data={data}
-          cx="50%"
-          cy="50%"
-          labelLine={false}
-          outerRadius={80}
-          fill="#8884d8"
-          dataKey="value"
-          nameKey="name"
-          label={({ name, percent }) =>
-            `${name} ${(percent * 100).toFixed(0)}%`
-          }
-        >
-          {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-          ))}
-        </Pie>
-        <Tooltip />
-        <Legend />
-      </PieChart>
-    </ResponsiveContainer>
-  );
-}
 
 const DashboardPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -197,10 +102,18 @@ const DashboardPage: React.FC = () => {
     setSelectedAvantages((prevSelected) => {
       let newSelected: string[];
       if (avantage === "Sélectionner tout") {
-        newSelected =
-          prevSelected.length === avantageOptions.length
-            ? []
-            : avantageOptions.filter((opt) => opt !== "(Vide)");
+        const allSelectableAvantages = avantageOptions.filter(
+          (opt) => opt !== "(Vide)"
+        );
+        const currentlyAllSelected = allSelectableAvantages.every((item) =>
+          prevSelected.includes(item)
+        );
+
+        if (currentlyAllSelected) {
+          newSelected = []; // Deselect all
+        } else {
+          newSelected = allSelectableAvantages; // Select all selectable
+        }
       } else {
         newSelected = prevSelected.includes(avantage)
           ? prevSelected.filter((a) => a !== avantage)
@@ -368,7 +281,7 @@ const DashboardPage: React.FC = () => {
     "Aïn Témouchent": { value: 46, color: "#f9ebf0" },
     Ghardaïa: { value: 47, color: "#f9f0f0" },
     Relizane: { value: 48, color: "#ebf0f9" },
-    "El M'ghair": { value: 49, color: "#f9f9eb" },
+    "El M\\'ghair": { value: 49, color: "#f9f9eb" },
     "El Menia": { value: 50, color: "#ebf0f0" },
     "Ouled Djellal": { value: 51, color: "#f9ebeb" },
     "Bordj Badji Mokhtar": { value: 52, color: "#f0f9eb" },
@@ -384,21 +297,6 @@ const DashboardPage: React.FC = () => {
     { name: "MAL", value: 4000 },
     { name: "FEMEL", value: 1240 },
   ];
-
-  useEffect(() => {
-    refreshData();
-    refreshRiskStats(
-      selectedWilaya?.code.toString(),
-      selectedCategories,
-      selectedAvantages
-    );
-  }, [
-    refreshData,
-    refreshRiskStats,
-    selectedWilaya,
-    selectedCategories,
-    selectedAvantages,
-  ]);
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -435,7 +333,7 @@ const DashboardPage: React.FC = () => {
         <div className="px-4 py-6 sm:px-0">
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Map Section - Left Side */}
-            <div className="lg:w-1/3">
+            <div className="lg:w-1/3 w-full">
               <div className="bg-white rounded-lg shadow p-4 sticky top-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-700">
@@ -483,57 +381,27 @@ const DashboardPage: React.FC = () => {
             </div>
 
             {/* Table Section - Right Side */}
-            <div className="lg:w-2/3">
+            <div className="lg:w-2/3 w-full">
               <div className="bg-white shadow rounded-lg p-6">
-                <div className="flex flex-row justify-around items-start mb-6 w-full">
-                  <div className="flex flex-col space-y-2">
-                    <h2 className="text-2xl font-bold text-gray-900">
-                      Catégorie de risque
-                    </h2>
-                    {categoryOptions.map((category) => (
-                      <label
-                        key={category}
-                        className="inline-flex items-center"
-                      >
-                        <input
-                          type="checkbox"
-                          className="form-checkbox h-5 w-5 text-indigo-600"
-                          checked={selectedCategories.includes(category)}
-                          onChange={() => handleCategoryChange(category)}
-                        />
-                        <span className="ml-2 text-gray-700">{category}</span>
-                      </label>
-                    ))}
-                  </div>
-                  <div className="flex flex-col space-y-2">
-                    <h2 className="text-2xl font-bold text-gray-900">
-                      Avantage
-                    </h2>
-                    {avantageOptions.map((avantage) => (
-                      <label
-                        key={avantage}
-                        className="inline-flex items-center"
-                      >
-                        <input
-                          type="checkbox"
-                          className="form-checkbox h-5 w-5 text-indigo-600"
-                          checked={selectedAvantages.includes(avantage)}
-                          onChange={() => handleAvantageChange(avantage)}
-                        />
-                        <span className="ml-2 text-gray-700">{avantage}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
+                <FilterSection
+                  categoryOptions={categoryOptions}
+                  avantageOptions={avantageOptions}
+                  selectedCategories={selectedCategories}
+                  setSelectedCategories={setSelectedCategories}
+                  selectedAvantages={selectedAvantages}
+                  setSelectedAvantages={setSelectedAvantages}
+                  handleCategoryChange={handleCategoryChange}
+                  handleAvantageChange={handleAvantageChange}
+                />
 
                 {/* Risk Cluster Chart */}
                 <RiskClusterDisplay data={riskLevelStats} />
 
-                <div className="flex flex-row justify-around items-start mb-6 w-full">
-                  <div className="flex flex-col space-y-2 h-[350px] w-1/2">
-                    <Example data={sampleData} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 w-full">
+                  <div className="h-[350px]">
+                    <RiskPieChart data={sampleData} />
                   </div>
-                  <div className="flex flex-col space-y-2 h-[350px] w-1/2 justify-center items-center bg-white shadow rounded-lg p-6">
+                  <div className="flex flex-col space-y-2 h-[350px] justify-center items-center bg-white shadow rounded-lg p-6">
                     <h3 className="text-xl font-bold text-gray-900 mb-2">
                       nombre de cas TP
                     </h3>

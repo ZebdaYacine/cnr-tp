@@ -69,7 +69,26 @@ func (r *pensionRepository) GetRiskLevelStats(wilaya string, categories []string
 	}
 
 	if len(avantages) > 0 {
-		db = db.Where("avt IN (?) OR (avt = 0 AND ?)", avantages, contains(avantages, "(Vide)"))
+		var avtCodes []int8
+		includeEmpty := false
+		for _, avt := range avantages {
+			switch avt {
+			case "direct":
+				avtCodes = append(avtCodes, 1, 7)
+			case "fille majeur":
+				avtCodes = append(avtCodes, 4, 9)
+			case "(Vide)":
+				includeEmpty = true
+			}
+		}
+
+		if includeEmpty && len(avtCodes) > 0 {
+			db = db.Where("avt IN (?) OR avt = 0", avtCodes)
+		} else if includeEmpty {
+			db = db.Where("avt = 0")
+		} else if len(avtCodes) > 0 {
+			db = db.Where("avt IN (?)", avtCodes)
+		}
 	}
 
 	// Get total count for percentage calculation
@@ -115,14 +134,4 @@ func (r *pensionRepository) GetRiskLevelStats(wilaya string, categories []string
 	}
 
 	return stats, nil
-}
-
-// Helper function to check if a string is in a slice
-func contains(s []string, e string) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
 }

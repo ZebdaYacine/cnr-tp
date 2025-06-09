@@ -121,30 +121,22 @@ const DashboardService = {
     }
 
     try {
-      const queryParams = new URLSearchParams();
-      if (wilaya) {
-        queryParams.append("wilaya", wilaya);
-      }
-      if (categories && categories.length > 0) {
-        categories.forEach((category) =>
-          queryParams.append("categories", category)
-        );
-      }
-      if (avantages && avantages.length > 0) {
-        avantages.forEach((avantage) =>
-          queryParams.append("avantages", avantage)
-        );
-      }
+      const filters = {
+        wilaya: wilaya || "",
+        categories: categories || [],
+        avantages: avantages || [],
+      };
 
       const endpoint =
         role === "admin" ? "admin/pensions/risk-stats" : "pensions/risk-stats";
-      const url = `${API_BASE_URL}/${endpoint}?${queryParams.toString()}`;
+      const url = `${API_BASE_URL}/${endpoint}`;
       const response = await fetch(url, {
-        method: "GET",
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token.trim()}`,
         },
+        body: JSON.stringify(filters),
       });
 
       if (!response.ok) {

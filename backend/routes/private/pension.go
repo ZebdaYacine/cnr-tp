@@ -15,5 +15,5 @@ func NewPensionRouter(router *gin.RouterGroup, pensionHandler *api.PensionHandle
 	router.DELETE("/pensions/:id", pensionHandler.DeletePension)
 
 	// Risk stats route
-	router.GET("/pensions/risk-stats", pensionHandler.GetRiskLevelStats)
+	router.POST("/pensions/risk-stats", pensionHandler.GetRiskLevelStats)
 }

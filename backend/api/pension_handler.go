@@ -107,11 +107,19 @@ func (h *PensionHandler) DeletePension(c *gin.Context) {
 
 // GetRiskLevelStats handles fetching risk level statistics
 func (h *PensionHandler) GetRiskLevelStats(c *gin.Context) {
-	wilaya := c.Query("wilaya")              // Get wilaya from query parameter
-	categories := c.QueryArray("categories") // Get categories from query parameter
-	avantages := c.QueryArray("avantages")   // Get avantages from query parameter
+	var filters struct {
+		Wilaya     string   `json:"wilaya"`
+		Categories []string `json:"categories"`
+		Avantages  []string `json:"avantages"`
+	}
 
-	stats, err := h.pensionUseCase.GetRiskLevelStats(wilaya, categories, avantages)
+	// Bind the JSON request body to the filters struct
+	if err := c.ShouldBindJSON(&filters); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body format"})
+		return
+	}
+
+	stats, err := h.pensionUseCase.GetRiskLevelStats(filters.Wilaya, filters.Categories, filters.Avantages)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch risk level statistics"})
 		return
