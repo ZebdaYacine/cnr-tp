@@ -26,7 +26,7 @@ type PensionData struct {
 type PensionRepository interface {
 	Create(pension *PensionData) error
 	FindByID(id uint) (*PensionData, error)
-	FindAll(page, limit int) ([]PensionData, int64, error)
+	FindAll() ([]PensionData, int64, error)
 	Update(pension *PensionData) error
 	Delete(id uint) error
 	GetRiskLevelStats(wilaya string, categories []string, avantages []string) ([]RiskLevelStats, error)
@@ -35,7 +35,7 @@ type PensionRepository interface {
 type PensionUseCase interface {
 	CreatePension(pension *PensionData) error
 	GetPension(id uint) (*PensionData, error)
-	GetAllPensions(page, limit int) ([]PensionData, int64, error)
+	GetAllPensions() ([]PensionData, int64, error)
 	UpdatePension(pension *PensionData) error
 	DeletePension(id uint) error
 	GetRiskLevelStats(wilaya string, categories []string, avantages []string) ([]RiskLevelStats, error)

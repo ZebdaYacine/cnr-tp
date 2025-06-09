@@ -1,29 +1,19 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import {
-  useDashboard,
-  type RiskLevelStats,
-} from "../contexts/DashboardContext";
+import { useDashboard } from "../contexts/DashboardContext";
 import { Map } from "algeria-map-ts";
-import { Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 import RiskClusterDisplay from "../components/RiskClusterDisplay";
 import RiskPieChart from "../components/RiskPieChart";
 import FilterSection from "../components/FilterSection";
+import PensionTable from "../components/PensionTable";
+import StatsDisplay from "../components/StatsDisplay";
+import { data } from "./wilaya";
 
 interface WilayaInfo {
   name: string;
   code: number;
 }
-
-interface WilayaData {
-  value: number;
-  color: string;
-}
-
-type WilayaMap = {
-  [key: string]: WilayaData;
-};
 
 const DashboardPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -44,6 +34,10 @@ const DashboardPage: React.FC = () => {
   const [agFilter, setAgFilter] = useState<string>("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedAvantages, setSelectedAvantages] = useState<string[]>([]);
+  const [manualWilayaCode, setManualWilayaCode] = useState<string>("");
+  const [selectedWilayaName, setSelectedWilayaName] = useState<string | null>(
+    null
+  );
 
   const handleRegionSelect = (wilaya: string) => {
     // Find the wilaya code from the data object
@@ -51,15 +45,42 @@ const DashboardPage: React.FC = () => {
     const wilayaCode = wilayaData?.value;
 
     if (selectedWilaya?.name === wilaya) {
+      // If clicking the same wilaya, clear the selection
       setSelectedWilaya(null);
       setAgFilter("");
-      refreshData(1, pagination?.limit || 10);
+      setSelectedWilayaName(null); // Clear selected wilaya name as well
+      refreshData(); // Fetch all data
       refreshRiskStats(undefined, selectedCategories, selectedAvantages);
     } else {
+      // If selecting a new wilaya
       setSelectedWilaya({ name: wilaya, code: wilayaCode || 0 });
-      refreshData(1, pagination?.limit || 10, wilaya);
+      setSelectedWilayaName(wilaya); // Set selected wilaya name from map
+      refreshData(wilayaCode?.toString()); // Pass the wilaya code to filter data
       refreshRiskStats(
-        wilayaCode.toString(),
+        wilayaCode?.toString(),
+        selectedCategories,
+        selectedAvantages
+      );
+    }
+  };
+
+  const handleWilayaNameChange = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    const name = event.target.value;
+    setSelectedWilayaName(name === "" ? null : name);
+    if (name === "") {
+      setSelectedWilaya(null);
+      setManualWilayaCode("");
+      refreshData();
+      refreshRiskStats(undefined, selectedCategories, selectedAvantages);
+    } else {
+      const wilayaData = data[name as keyof typeof data];
+      const wilayaCode = wilayaData?.value;
+      setSelectedWilaya({ name: name, code: wilayaCode || 0 });
+      refreshData(wilayaCode?.toString());
+      refreshRiskStats(
+        wilayaCode?.toString(),
         selectedCategories,
         selectedAvantages
       );
@@ -77,12 +98,7 @@ const DashboardPage: React.FC = () => {
   }, [selectedWilaya]);
 
   const categoryOptions = ["décès", "fin droit", "révision"];
-  const avantageOptions = [
-    "Sélectionner tout",
-    "(Vide)",
-    "direct",
-    "fille majeur",
-  ];
+  const avantageOptions = ["Sélectionner tout", "direct", "fille majeur"];
 
   const handleCategoryChange = (category: string) => {
     setSelectedCategories((prevSelected) => {
@@ -147,17 +163,34 @@ const DashboardPage: React.FC = () => {
     if (!pensionData) return null;
     let filtered = pensionData;
 
-    // Filter by wilaya code if selected
+    // Filter by wilaya code if selected (map filter)
     if (selectedWilaya) {
       filtered = filtered.filter(
         (pension) => pension.ag === selectedWilaya.code
       );
     }
 
+    // Filter by manual wilaya code input (if no map selection)
+    if (!selectedWilaya && manualWilayaCode) {
+      const code = parseInt(manualWilayaCode);
+      if (!isNaN(code)) {
+        filtered = filtered.filter((pension) => pension.ag === code);
+      }
+    }
+
+    // Filter by selected wilaya name (if no map selection or manual code)
+    if (!selectedWilaya && !manualWilayaCode && selectedWilayaName) {
+      const wilayaData = data[selectedWilayaName as keyof typeof data];
+      const wilayaCode = wilayaData?.value;
+      if (wilayaCode) {
+        filtered = filtered.filter((pension) => pension.ag === wilayaCode);
+      }
+    }
+
     // Filter by selected categories
     if (selectedCategories.length > 0) {
-      filtered = filtered.filter(
-        (pension) => selectedCategories.includes(pension.etatpens) // Changed from cat_risque
+      filtered = filtered.filter((pension) =>
+        selectedCategories.includes(pension.etatpens)
       );
     }
 
@@ -183,28 +216,34 @@ const DashboardPage: React.FC = () => {
     }
 
     return filtered;
-  }, [pensionData, selectedWilaya, selectedCategories, selectedAvantages]);
+  }, [
+    pensionData,
+    selectedWilaya,
+    manualWilayaCode,
+    selectedCategories,
+    selectedAvantages,
+    selectedWilayaName,
+  ]);
+
+  // Calculate gender statistics based on filtered data
+  const genderStats = useMemo(() => {
+    if (!filteredPensionData) return [];
+
+    const maleCount = filteredPensionData.filter(
+      (p) => p.sexe_tp === "M"
+    ).length;
+    const femaleCount = filteredPensionData.filter(
+      (p) => p.sexe_tp === "F"
+    ).length;
+
+    return [
+      { name: "Homme", value: maleCount },
+      { name: "Femme", value: femaleCount },
+    ];
+  }, [filteredPensionData]);
 
   const handleLogout = () => {
     logout();
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString();
-  };
-
-  const formatCurrency = (amount: number | null | undefined) => {
-    if (amount === null || amount === undefined || isNaN(amount)) {
-      return "-";
-    }
-    const doubleAmount = parseFloat(amount.toFixed(2));
-    return new Intl.NumberFormat("fr-DZ", {
-      style: "currency",
-      currency: "DZD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(doubleAmount);
   };
 
   const handlePageChange = (newPage: number) => {
@@ -213,90 +252,35 @@ const DashboardPage: React.FC = () => {
       newPage >= 1 &&
       newPage <= Math.ceil(pagination.total / pagination.limit)
     ) {
-      setPage(newPage, selectedWilaya?.name || undefined);
+      setPage(newPage);
     }
   };
 
   const handleLimitChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const newLimit = parseInt(event.target.value);
-    setLimit(newLimit, selectedWilaya?.name || undefined);
-    setPage(1, selectedWilaya?.name || undefined);
+    setLimit(newLimit);
+    setPage(1);
   };
 
   const handleRefresh = () => {
-    refreshData(1, pagination?.limit || 10, selectedWilaya?.name || undefined);
+    // Determine the wilaya code to use for refreshing data
+    let wilayaCodeToRefresh: string | undefined = undefined;
+    if (selectedWilaya) {
+      wilayaCodeToRefresh = selectedWilaya.code.toString();
+    } else if (manualWilayaCode) {
+      wilayaCodeToRefresh = manualWilayaCode;
+    }
+
+    refreshData(wilayaCodeToRefresh);
     refreshRiskStats(
-      selectedWilaya?.code.toString(),
+      wilayaCodeToRefresh,
       selectedCategories,
       selectedAvantages
     );
   };
 
-  const data: WilayaMap = {
-    Adrar: { value: 1, color: "#fff9eb" },
-    Chlef: { value: 2, color: "#ebf0f9" },
-    Laghouat: { value: 3, color: "#f0ebf9" },
-    "Oum El Bouaghi": { value: 4, color: "#f9ebf1" },
-    Batna: { value: 5, color: "#ebf9ee" },
-    Béjaïa: { value: 6, color: "#f9f0eb" },
-    Biskra: { value: 7, color: "#ebf9f2" },
-    Béchar: { value: 8, color: "#f0fff9" },
-    Blida: { value: 9, color: "#f9f4eb" },
-    Bouira: { value: 10, color: "#ebf4f9" },
-    Tamanrasset: { value: 11, color: "#f4ebf9" },
-    Tébessa: { value: 12, color: "#f9ebeb" },
-    Tlemcen: { value: 13, color: "#f9fff0" },
-    Tiaret: { value: 14, color: "#e5f9eb" },
-    "Tizi Ouzou": { value: 15, color: "#ebf9f7" },
-    Alger: { value: 16, color: "#ebf9ee" },
-    Djelfa: { value: 17, color: "#ebf9ff" },
-    Jijel: { value: 18, color: "#f2f9eb" },
-    Sétif: { value: 19, color: "#f9ebf5" },
-    Saïda: { value: 20, color: "#f9fff9" },
-    Skikda: { value: 21, color: "#ebf0f0" },
-    "Sidi Bel Abbès": { value: 22, color: "#ebf9eb" },
-    Annaba: { value: 23, color: "#f0ebeb" },
-    Guelma: { value: 24, color: "#fff0eb" },
-    Constantine: { value: 25, color: "#ebf9f4" },
-    Médéa: { value: 26, color: "#ebf3f9" },
-    Mostaganem: { value: 27, color: "#f0ebf0" },
-    "M'Sila": { value: 28, color: "#f9ebf9" },
-    Mascara: { value: 29, color: "#ebf9e5" },
-    Ouargla: { value: 30, color: "#ebfff9" },
-    Oran: { value: 31, color: "#ebebf9" },
-    "El Bayadh": { value: 32, color: "#f9ebeb" },
-    Illizi: { value: 33, color: "#f9f9eb" },
-    "Bordj Bou Arréridj": { value: 34, color: "#f4f9eb" },
-    Boumerdès: { value: 35, color: "#ebebf0" },
-    "El Tarf": { value: 36, color: "#f9ebf2" },
-    Tindouf: { value: 37, color: "#fff9eb" },
-    Tissemsilt: { value: 38, color: "#ebf9e0" },
-    "El Oued": { value: 39, color: "#f9ebff" },
-    Khenchela: { value: 40, color: "#ebf0eb" },
-    "Souk Ahras": { value: 41, color: "#ebfff0" },
-    Tipaza: { value: 42, color: "#f0ebf5" },
-    Mila: { value: 43, color: "#f9f9f0" },
-    "Aïn Defla": { value: 44, color: "#f9f0eb" },
-    Naâma: { value: 45, color: "#ebf5f9" },
-    "Aïn Témouchent": { value: 46, color: "#f9ebf0" },
-    Ghardaïa: { value: 47, color: "#f9f0f0" },
-    Relizane: { value: 48, color: "#ebf0f9" },
-    "El M\\'ghair": { value: 49, color: "#f9f9eb" },
-    "El Menia": { value: 50, color: "#ebf0f0" },
-    "Ouled Djellal": { value: 51, color: "#f9ebeb" },
-    "Bordj Badji Mokhtar": { value: 52, color: "#f0f9eb" },
-    "Béni Abbès": { value: 53, color: "#ebebeb" },
-    Timimoun: { value: 54, color: "#f9f0eb" },
-    Touggourt: { value: 55, color: "#f4ebf9" },
-    Djanet: { value: 56, color: "#ebf9f9" },
-    "In Salah": { value: 57, color: "#f9f9f9" },
-    "In Guezzam": { value: 58, color: "#ebebf9" },
-  };
-
-  const sampleData = [
-    { name: "MAL", value: 4000 },
-    { name: "FEMEL", value: 1240 },
-  ];
+  const dataKeys = Object.keys(data);
+  const wilayaNames = dataKeys.sort(); // Sort wilaya names alphabetically
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -334,7 +318,7 @@ const DashboardPage: React.FC = () => {
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Map Section - Left Side */}
             <div className="lg:w-1/3 w-full">
-              <div className="bg-white rounded-lg shadow p-4 sticky top-6">
+              <div className="bg-white rounded-lg shadow p-4">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-700">
                     Filtrer par Wilaya
@@ -344,12 +328,36 @@ const DashboardPage: React.FC = () => {
                       onClick={() => {
                         setSelectedWilaya(null);
                         setAgFilter("");
+                        setSelectedWilayaName(null);
+                        setManualWilayaCode("");
                       }}
                       className="text-sm text-indigo-600 hover:text-indigo-800"
                     >
                       Effacer le filtre
                     </button>
                   )}
+                </div>
+                {/* Wilaya Name Dropdown */}
+                <div className="mb-4">
+                  <label
+                    htmlFor="wilayaNameSelect"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Sélectionner Wilaya par nom:
+                  </label>
+                  <select
+                    id="wilayaNameSelect"
+                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                    value={selectedWilayaName || ""}
+                    onChange={handleWilayaNameChange}
+                  >
+                    <option value="">Toutes les Wilayas</option>
+                    {wilayaNames.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="w-full">
                   <Map
@@ -378,6 +386,30 @@ const DashboardPage: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {/* Risk Pie Chart */}
+              <div className="bg-white rounded-lg shadow p-4 mt-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                  Distribution par Genre
+                </h3>
+                <div className="h-[350px]">
+                  <RiskPieChart data={genderStats} />
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-4 text-center">
+                  <div>
+                    <p className="text-sm text-gray-600">Homme</p>
+                    <p className="text-xl font-bold text-blue-600">
+                      {genderStats[0]?.value.toLocaleString() || 0}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Femme</p>
+                    <p className="text-xl font-bold text-pink-600">
+                      {genderStats[1]?.value.toLocaleString() || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Table Section - Right Side */}
@@ -394,22 +426,14 @@ const DashboardPage: React.FC = () => {
                   handleAvantageChange={handleAvantageChange}
                 />
 
-                {/* Risk Cluster Chart */}
                 <RiskClusterDisplay data={riskLevelStats} />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 w-full">
-                  <div className="h-[350px]">
-                    <RiskPieChart data={sampleData} />
-                  </div>
-                  <div className="flex flex-col space-y-2 h-[350px] justify-center items-center bg-white shadow rounded-lg p-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">
-                      nombre de cas TP
-                    </h3>
-                    <p className="text-5xl font-extrabold text-indigo-600">
-                      213K
-                    </p>
-                  </div>
-                </div>
+                <StatsDisplay
+                  pensionData={pensionData}
+                  selectedWilaya={selectedWilaya}
+                  selectedCategories={selectedCategories}
+                  selectedAvantages={selectedAvantages}
+                />
 
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl font-bold text-gray-900">
@@ -449,197 +473,14 @@ const DashboardPage: React.FC = () => {
                   </div>
                 </div>
 
-                {error && (
-                  <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
-                    <div className="flex">
-                      <div className="flex-shrink-0">
-                        <svg
-                          className="h-5 w-5 text-red-400"
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </div>
-                      <div className="ml-3">
-                        <p className="text-sm text-red-700">{error}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {filteredPensionData && filteredPensionData.length > 0 ? (
-                  <>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Numéro Pension
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              État
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Date de Naissance
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Date de Jouissance
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              AG
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              AVT
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Âge App TP
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Âge Moyen Cat
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Durée Pension
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Niveau Risque
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Risque Âge
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Sexe
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Taux D
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Taux Global
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Taux RV
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Net Mensuel
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {filteredPensionData.map((pension) => (
-                            <tr key={pension.id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {pension.npens}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {pension.etatpens}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {formatDate(pension.datenais)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {formatDate(pension.datjouis)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {pension.ag}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {pension.avt}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {pension.age_app_tp}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {pension.age_moyen_cat}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {pension.duree_pension}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {pension.niveau_risque_predit}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {pension.risque_age}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {pension.sexe_tp}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {pension.taux_d}%
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {pension.taux_glb}%
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {pension.taux_rv}%
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {formatCurrency(pension.net_mens)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {pagination && (
-                      <div className="flex items-center justify-between mt-4">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm text-gray-700">
-                            Rows per page:
-                          </span>
-                          <select
-                            value={pagination.limit}
-                            onChange={handleLimitChange}
-                            className="border rounded px-2 py-1 text-sm"
-                          >
-                            <option value="10">10</option>
-                            <option value="20">20</option>
-                            <option value="50">50</option>
-                            <option value="100">100</option>
-                          </select>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() =>
-                              handlePageChange(pagination.page - 1)
-                            }
-                            disabled={pagination.page === 1}
-                            className="px-3 py-1 rounded border disabled:opacity-50"
-                          >
-                            Previous
-                          </button>
-                          <span className="text-sm text-gray-700">
-                            Page {pagination.page} of{" "}
-                            {Math.ceil(pagination.total / pagination.limit)}
-                          </span>
-                          <button
-                            onClick={() =>
-                              handlePageChange(pagination.page + 1)
-                            }
-                            disabled={
-                              pagination.page >=
-                              Math.ceil(pagination.total / pagination.limit)
-                            }
-                            className="px-3 py-1 rounded border disabled:opacity-50"
-                          >
-                            Next
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  !loading && (
-                    <div className="text-center py-12">
-                      <p className="text-gray-500">No pension data available</p>
-                    </div>
-                  )
-                )}
+                <PensionTable
+                  pensionData={filteredPensionData || []}
+                  pagination={pagination}
+                  loading={loading}
+                  error={error}
+                  onPageChange={handlePageChange}
+                  onLimitChange={handleLimitChange}
+                />
               </div>
             </div>
           </div>

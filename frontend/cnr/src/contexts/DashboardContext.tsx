@@ -31,15 +31,13 @@ export interface PensionData {
 }
 
 export interface PaginationMeta {
-  limit: number;
-  offset: number;
-  page: number;
   total: number;
+  page: number;
+  limit: number;
 }
 
 export interface PaginatedResponse {
   data: PensionData[];
-  meta: PaginationMeta;
 }
 
 export interface RiskLevelStats {
@@ -52,17 +50,13 @@ interface DashboardContextType {
   pensionData: PensionData[] | null;
   loading: boolean;
   error: string | null;
-  refreshData: (
-    page?: number,
-    limit?: number,
-    wilaya?: string
-  ) => Promise<void>;
+  refreshData: (wilaya?: string) => Promise<void>;
   selectedPension: PensionData | null;
   setSelectedPension: (pension: PensionData | null) => void;
   getPensionById: (id: string) => Promise<PensionData>;
-  pagination: PaginationMeta | null;
-  setPage: (page: number, wilaya?: string) => void;
-  setLimit: (limit: number, wilaya?: string) => void;
+  pagination: PaginationMeta;
+  setPage: (page: number) => void;
+  setLimit: (limit: number) => void;
   riskLevelStats: RiskLevelStats[] | null;
   refreshRiskStats: (
     wilaya?: string,
@@ -86,11 +80,17 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
   const [selectedPension, setSelectedPension] = useState<PensionData | null>(
     null
   );
-  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
-  const [riskLevelStats, setRiskLevelStats] = useState<RiskLevelStats[] | null>(null);
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    total: 0,
+    page: 1,
+    limit: 10,
+  });
+  const [riskLevelStats, setRiskLevelStats] = useState<RiskLevelStats[] | null>(
+    null
+  );
 
   const fetchData = useCallback(
-    async (page: number = 1, limit: number = 10, wilaya?: string) => {
+    async (wilaya?: string) => {
       if (!token || !user?.role) return;
 
       try {
@@ -98,12 +98,13 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
         const response = await DashboardService.getPensions(
           token,
           user.role,
-          page,
-          limit,
           wilaya
         );
         setPensionData(response.data);
-        setPagination(response.meta);
+        setPagination((prev) => ({
+          ...prev,
+          total: response.data.length,
+        }));
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred");
@@ -115,11 +116,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const fetchRiskLevelStats = useCallback(
-    async (
-      wilaya?: string,
-      categories?: string[],
-      avantages?: string[]
-    ) => {
+    async (wilaya?: string, categories?: string[], avantages?: string[]) => {
       if (!token || !user?.role) return;
 
       try {
@@ -151,38 +148,31 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
     [token, isAuthenticated, user]
   );
 
-  const handleSetPage = useCallback(
-    (page: number, wilaya?: string) => {
-      if (pagination) {
-        fetchData(page, pagination.limit, wilaya);
-      }
-    },
-    [pagination, fetchData]
-  );
+  const handleSetPage = useCallback((page: number) => {
+    setPagination((prev) => ({
+      ...prev,
+      page,
+    }));
+  }, []);
 
-  const handleSetLimit = useCallback(
-    (limit: number, wilaya?: string) => {
-      if (pagination) {
-        fetchData(1, limit, wilaya);
-      }
-    },
-    [pagination, fetchData]
-  );
+  const handleSetLimit = useCallback((limit: number) => {
+    setPagination((prev) => ({
+      ...prev,
+      limit,
+      page: 1, // Reset to first page when changing limit
+    }));
+  }, []);
 
   const refreshData = useCallback(
-    (page: number = 1, limit: number = 10, wilaya?: string) => {
-      fetchData(page, limit, wilaya);
+    async (wilaya?: string) => {
+      await fetchData(wilaya);
     },
     [fetchData]
   );
 
   const refreshRiskStats = useCallback(
-    async (
-      wilaya?: string,
-      categories?: string[],
-      avantages?: string[]
-    ) => {
-      fetchRiskLevelStats(wilaya, categories, avantages);
+    async (wilaya?: string, categories?: string[], avantages?: string[]) => {
+      await fetchRiskLevelStats(wilaya, categories, avantages);
     },
     [fetchRiskLevelStats]
   );

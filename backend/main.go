@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -39,7 +38,7 @@ func main() {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	// // Check for Excel file argument
+	// // // Check for Excel file argument
 	// if len(os.Args) > 1 {
 	// 	excelFilePath := os.Args[1]
 	// 	log.Printf("Attempting to import data from Excel file: %s\n", excelFilePath)
@@ -84,11 +83,11 @@ func importPensionDataFromExcel(filePath string, pensionUseCase domain.PensionUs
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
-			log.Printf("Error closing excel file: %v", err)
+			log.Printf("error closing excel file: %v", err)
 		}
 	}()
 
-	// Assuming the data is in the first sheet
+	// Get the first sheet
 	sheetName := f.GetSheetName(0)
 	if sheetName == "" {
 		return errors.New("no sheets found in the excel file")
@@ -103,56 +102,67 @@ func importPensionDataFromExcel(filePath string, pensionUseCase domain.PensionUs
 		return errors.New("excel file has no data rows (headers only or empty)")
 	}
 
-	// Process rows concurrently
-	var wg sync.WaitGroup
+	// Process rows sequentially
 	for i, row := range rows {
-		if i == 0 { // Skip header row
+		if i == 0 { // Skip header
 			continue
 		}
 
-		// Basic validation for row length (adjust as per your Excel columns)
-		if len(row) < 16 { // Corrected to 16 columns based on PensionData struct
+		if len(row) < 16 {
 			log.Printf("Skipping row %d due to insufficient columns: %v", i+1, row)
 			continue
 		}
 
-		wg.Add(1)
-		go func(r []string) {
-			defer wg.Done()
+		pensionData := domain.PensionData{}
 
-			pensionData := domain.PensionData{}
+		valAG, _ := strconv.ParseInt(row[0], 10, 8)
+		pensionData.AG = int8(valAG)
 
-			// Parse and assign values from row to pensionData struct
-			valAG, _ := strconv.ParseInt(r[0], 10, 8)
-			pensionData.AG = int8(valAG)
-			valAVT, _ := strconv.ParseInt(r[1], 10, 8)
-			pensionData.AVT = int8(valAVT)
-			pensionData.NPens = r[2]
-			pensionData.EtatPens = r[3]
-			pensionData.DateNais, _ = time.Parse("02/01/2006 15:04:05", r[4])  // Adjust date format if needed
-			pensionData.DateJouis, _ = time.Parse("02/01/2006 15:04:05", r[5]) // Adjust date format if needed
-			pensionData.SexeTP = r[6]
-			pensionData.NetMens, _ = strconv.ParseFloat(r[7], 64)
-			pensionData.TauxD, _ = strconv.ParseFloat(r[8], 64)
-			pensionData.TauxRV, _ = strconv.ParseFloat(r[9], 64)
-			pensionData.TauxGLB, _ = strconv.ParseFloat(r[10], 64)
-			valAgeAppTP, _ := strconv.ParseInt(r[11], 10, 8)
-			pensionData.AgeAppTP = int8(valAgeAppTP)
-			pensionData.DureePension, _ = strconv.Atoi(r[12])
-			valAgeMoyenCat, _ := strconv.ParseInt(r[13], 10, 8)
-			pensionData.AgeMoyenCat = int8(valAgeMoyenCat)
-			valRisqueAge, _ := strconv.ParseInt(r[14], 10, 8)
-			pensionData.RisqueAge = int8(valRisqueAge)
-			valNiveauRisquePredit, _ := strconv.ParseInt(r[15], 10, 8)
-			pensionData.NiveauRisquePredit = int8(valNiveauRisquePredit)
+		valAVT, _ := strconv.ParseInt(row[1], 10, 8)
+		pensionData.AVT = int8(valAVT)
 
-			// Insert into database
-			if err := pensionUseCase.CreatePension(&pensionData); err != nil {
-				log.Printf("Error inserting pension data from row %d: %v", i+1, err)
-			}
-		}(row)
+		pensionData.NPens = row[2]
+		pensionData.EtatPens = row[3]
+
+		pensionData.DateNais, err = time.Parse("2006-01-02 15:04:05", row[4])
+		if err != nil {
+			log.Printf("Invalid DateNais format at row %d: %v", i+1, err)
+			continue
+		}
+
+		pensionData.DateJouis, err = time.Parse("2006-01-02 15:04:05", row[5])
+		if err != nil {
+			log.Printf("Invalid DateJouis format at row %d: %v", i+1, err)
+			continue
+		}
+
+		pensionData.SexeTP = row[6]
+
+		pensionData.NetMens, _ = strconv.ParseFloat(row[7], 64)
+		pensionData.TauxD, _ = strconv.ParseFloat(row[8], 64)
+		pensionData.TauxRV, _ = strconv.ParseFloat(row[9], 64)
+		pensionData.TauxGLB, _ = strconv.ParseFloat(row[10], 64)
+
+		valAgeAppTP, _ := strconv.ParseInt(row[11], 10, 8)
+		pensionData.AgeAppTP = int8(valAgeAppTP)
+
+		pensionData.DureePension, _ = strconv.Atoi(row[12])
+
+		valAgeMoyenCat, _ := strconv.ParseInt(row[13], 10, 8)
+		pensionData.AgeMoyenCat = int8(valAgeMoyenCat)
+
+		valRisqueAge, _ := strconv.ParseInt(row[14], 10, 8)
+		pensionData.RisqueAge = int8(valRisqueAge)
+
+		valNiveauRisquePredit, _ := strconv.ParseInt(row[15], 10, 8)
+		pensionData.NiveauRisquePredit = int8(valNiveauRisquePredit)
+
+		log.Printf("Inserting row %d: %+v", i+1, pensionData)
+
+		if err := pensionUseCase.CreatePension(&pensionData); err != nil {
+			log.Printf("Error inserting pension data from row %d: %v", i+1, err)
+		}
 	}
 
-	wg.Wait()
 	return nil
 }

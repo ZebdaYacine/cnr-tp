@@ -49,11 +49,11 @@ export const useDashboardViewModel = () => {
       );
       if ("data" in response && "meta" in response) {
         setPensionData(response.data as unknown as PensionData[]);
-        setPagination({
-          page: response.meta.page,
-          limit: response.meta.limit,
-          total: response.meta.total,
-        });
+        // setPagination({
+        //   page: response.meta.page,
+        //   limit: response.meta.limit,
+        //   total: response.meta.total,
+        // });
       } else {
         throw new Error("Invalid response format from server");
       }

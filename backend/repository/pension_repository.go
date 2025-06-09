@@ -27,18 +27,16 @@ func (r *pensionRepository) FindByID(id uint) (*domain.PensionData, error) {
 	return &pension, nil
 }
 
-func (r *pensionRepository) FindAll(page, limit int) ([]domain.PensionData, int64, error) {
+func (r *pensionRepository) FindAll() ([]domain.PensionData, int64, error) {
 	var pensions []domain.PensionData
 	var total int64
-
-	offset := (page - 1) * limit
 
 	err := r.db.Model(&domain.PensionData{}).Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	err = r.db.Offset(offset).Limit(limit).Find(&pensions).Error
+	err = r.db.Find(&pensions).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -65,7 +63,7 @@ func (r *pensionRepository) GetRiskLevelStats(wilaya string, categories []string
 	}
 
 	if len(categories) > 0 {
-		db = db.Where("etatpens IN (?)", categories)
+		db = db.Where("etat_pens IN (?)", categories)
 	}
 
 	if len(avantages) > 0 {

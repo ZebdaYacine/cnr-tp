@@ -10,8 +10,6 @@ const DashboardService = {
   getPensions: async (
     token: string,
     role: string,
-    page: number = 1,
-    limit: number = 10,
     wilaya?: string
   ): Promise<PaginatedResponse> => {
     if (!token) {
@@ -22,20 +20,16 @@ const DashboardService = {
     }
 
     try {
-      const queryParams = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
-      });
-
+      const queryParams = new URLSearchParams();
       if (wilaya) {
-        queryParams.append("wilaya", wilaya);
+        queryParams.append("ag", wilaya);
       }
 
       // For admin users, use /admin/pensions
       // For regular users, use /pensions
       const endpoint = role === "admin" ? "admin/pensions" : "pensions";
       const response = await fetch(
-        `${API_BASE_URL}/${endpoint}?page=${page}&limit=${limit}`,
+        `${API_BASE_URL}/${endpoint}?${queryParams.toString()}`,
         {
           method: "GET",
           headers: {
@@ -54,12 +48,24 @@ const DashboardService = {
       }
 
       const data = await response.json();
-      if (!data.data || !Array.isArray(data.data) || !data.meta) {
-        throw new Error(
-          "Invalid response format: expected data array and meta object"
-        );
+      if (!data.data || !Array.isArray(data.data)) {
+        throw new Error("Invalid response format: expected data array");
       }
-      return data as PaginatedResponse;
+
+      // Calculate pagination metadata on the frontend
+      // const total = data.data.length;
+      // const startIndex = (page - 1) * limit;
+      // const endIndex = startIndex + limit;
+      // const paginatedData = data.data.slice(startIndex, endIndex);
+
+      return {
+        data: data.data,
+        // meta: {
+        //   total,
+        //   // page,
+        //   // limit,
+        // },
+      };
     } catch (error) {
       console.error("Error fetching pension data:", error);
       throw error;

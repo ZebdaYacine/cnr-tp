@@ -17,10 +17,7 @@ func NewPensionHandler(pensionUseCase domain.PensionUseCase) *PensionHandler {
 }
 
 func (h *PensionHandler) GetPensions(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-
-	pensions, total, err := h.pensionUseCase.GetAllPensions(page, limit)
+	pensions, total, err := h.pensionUseCase.GetAllPensions()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch pension data"})
 		return
@@ -29,10 +26,7 @@ func (h *PensionHandler) GetPensions(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"data": pensions,
 		"meta": gin.H{
-			"total":  total,
-			"page":   page,
-			"limit":  limit,
-			"offset": (page - 1) * limit,
+			"total": total,
 		},
 	})
 }
