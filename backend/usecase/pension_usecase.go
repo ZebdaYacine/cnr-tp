@@ -29,3 +29,7 @@ func (u *pensionUseCase) UpdatePension(pension *domain.PensionData) error {
 func (u *pensionUseCase) DeletePension(id uint) error {
 	return u.pensionRepo.Delete(id)
 }
+
+func (u *pensionUseCase) GetRiskLevelStats(wilaya string) ([]domain.RiskLevelStats, error) {
+	return u.pensionRepo.GetRiskLevelStats(wilaya)
+}

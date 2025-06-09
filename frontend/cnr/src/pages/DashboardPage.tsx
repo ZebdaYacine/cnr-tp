@@ -1,7 +1,24 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, PureComponent } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { useDashboard } from "../contexts/DashboardContext";
+import {
+  useDashboard,
+  type RiskLevelStats,
+} from "../contexts/DashboardContext";
 import { Map } from "algeria-map-ts";
+import {
+  BarChart,
+  Bar,
+  Rectangle,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 interface WilayaInfo {
   name: string;
@@ -17,8 +34,95 @@ type WilayaMap = {
   [key: string]: WilayaData;
 };
 
+interface RiskClusterDisplayProps {
+  data: RiskLevelStats[] | null;
+}
+
+const RiskClusterDisplay: React.FC<RiskClusterDisplayProps> = ({ data }) => {
+  if (!data || data.length === 0) {
+    return (
+      <div className="text-center py-4 text-gray-500">
+        No risk level data available.
+      </div>
+    );
+  }
+
+  const riskColors: { [key: string]: string } = {
+    "Bas risque": "bg-green-500",
+    "Haut risque": "bg-red-500",
+    "Moyen risque": "bg-yellow-500",
+  };
+
+  return (
+    <div className="bg-white shadow rounded-lg p-6 mb-6">
+      <h2 className="text-xl font-bold text-gray-900 mb-4">
+        Nombre de cas TP par cluster
+      </h2>
+      <div className="space-y-4">
+        {data.map((item) => (
+          <div key={item.riskLevel} className="flex items-center space-x-4">
+            <div className="w-32 text-right text-gray-700 font-medium">
+              {item.riskLevel}
+            </div>
+            <div className="flex-grow bg-gray-200 rounded-full h-8 flex items-center justify-end overflow-hidden">
+              <div
+                className={`${
+                  riskColors[item.riskLevel]
+                } h-full rounded-full flex items-center justify-center text-white font-bold text-sm pr-2`}
+                style={{ width: `${item.percentage}%` }}
+              >
+                {item.percentage.toFixed(0)}%
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+interface ChartDataItem {
+  name: string;
+  value: number;
+}
+
+interface ExampleProps {
+  data: ChartDataItem[];
+}
+
+const COLORS = ["#0088FE", "#FFBB28"];
+
+function Example({ data }: ExampleProps) {
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <PieChart width={400} height={400}>
+        <Pie
+          data={data}
+          cx="50%"
+          cy="50%"
+          labelLine={false}
+          outerRadius={80}
+          fill="#8884d8"
+          dataKey="value"
+          nameKey="name"
+          label={({ name, percent }) =>
+            `${name} ${(percent * 100).toFixed(0)}%`
+          }
+        >
+          {data.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+          ))}
+        </Pie>
+        <Tooltip />
+        <Legend />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+}
+
 const DashboardPage: React.FC = () => {
   const { user, logout } = useAuth();
+
   const {
     loading,
     error,
@@ -27,10 +131,14 @@ const DashboardPage: React.FC = () => {
     pagination,
     setPage,
     setLimit,
+    riskLevelStats,
+    refreshRiskStats,
   } = useDashboard();
 
   const [selectedWilaya, setSelectedWilaya] = useState<WilayaInfo | null>(null);
   const [agFilter, setAgFilter] = useState<string>("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedAvantages, setSelectedAvantages] = useState<string[]>([]);
 
   const handleRegionSelect = (wilaya: string) => {
     // Find the wilaya code from the data object
@@ -41,9 +149,11 @@ const DashboardPage: React.FC = () => {
       setSelectedWilaya(null);
       setAgFilter("");
       refreshData(1, pagination?.limit || 10);
+      refreshRiskStats();
     } else {
       setSelectedWilaya({ name: wilaya, code: wilayaCode || 0 });
       refreshData(1, pagination?.limit || 10, wilaya);
+      refreshRiskStats(wilayaCode.toString());
     }
   };
 
@@ -57,6 +167,53 @@ const DashboardPage: React.FC = () => {
     };
   }, [selectedWilaya]);
 
+  const categoryOptions = ["décès", "fin droit", "révision"];
+  const avantageOptions = [
+    "Sélectionner tout",
+    "(Vide)",
+    "direct",
+    "fille majeur",
+  ];
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategories((prevSelected) =>
+      prevSelected.includes(category)
+        ? prevSelected.filter((c) => c !== category)
+        : [...prevSelected, category]
+    );
+  };
+
+  const handleAvantageChange = (avantage: string) => {
+    if (avantage === "Sélectionner tout") {
+      setSelectedAvantages((prevSelected) =>
+        prevSelected.length === avantageOptions.length
+          ? []
+          : avantageOptions.filter((opt) => opt !== "(Vide)")
+      );
+    } else {
+      setSelectedAvantages((prevSelected) =>
+        prevSelected.includes(avantage)
+          ? prevSelected.filter((a) => a !== avantage)
+          : [...prevSelected, avantage]
+      );
+    }
+  };
+
+  const getAvantageLabel = (avtCode: number): string => {
+    switch (avtCode) {
+      case 1:
+      case 7:
+        return "direct";
+      case 4:
+      case 9:
+        return "fille majeur";
+      case 0:
+        return "(Vide)";
+      default:
+        return "";
+    }
+  };
+
   const filteredPensionData = useMemo(() => {
     if (!pensionData) return null;
     let filtered = pensionData;
@@ -68,8 +225,36 @@ const DashboardPage: React.FC = () => {
       );
     }
 
+    // Filter by selected categories
+    if (selectedCategories.length > 0) {
+      filtered = filtered.filter(
+        (pension) => selectedCategories.includes(pension.etatpens) // Changed from cat_risque
+      );
+    }
+
+    // Filter by selected avantages
+    if (selectedAvantages.length > 0) {
+      if (selectedAvantages.includes("Sélectionner tout")) {
+        filtered = filtered.filter((pension) => {
+          const label = getAvantageLabel(pension.avt);
+          return avantageOptions
+            .filter((opt) => opt !== "(Vide)")
+            .includes(label);
+        });
+      } else if (selectedAvantages.includes("(Vide)")) {
+        filtered = filtered.filter((pension) => {
+          const label = getAvantageLabel(pension.avt);
+          return selectedAvantages.includes(label) || label === "";
+        });
+      } else {
+        filtered = filtered.filter((pension) =>
+          selectedAvantages.includes(getAvantageLabel(pension.avt))
+        );
+      }
+    }
+
     return filtered;
-  }, [pensionData, selectedWilaya]);
+  }, [pensionData, selectedWilaya, selectedCategories, selectedAvantages]);
 
   const handleLogout = () => {
     logout();
@@ -174,6 +359,11 @@ const DashboardPage: React.FC = () => {
     "In Guezzam": { value: 58, color: "#ebebf9" },
   };
 
+  const sampleData = [
+    { name: "MAL", value: 4000 },
+    { name: "FEMEL", value: 1240 },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-100">
       <nav className="bg-white shadow-sm">
@@ -259,6 +449,64 @@ const DashboardPage: React.FC = () => {
             {/* Table Section - Right Side */}
             <div className="lg:w-2/3">
               <div className="bg-white shadow rounded-lg p-6">
+                <div className="flex flex-row justify-around items-start mb-6 w-full">
+                  <div className="flex flex-col space-y-2">
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      Catégorie de risque
+                    </h2>
+                    {categoryOptions.map((category) => (
+                      <label
+                        key={category}
+                        className="inline-flex items-center"
+                      >
+                        <input
+                          type="checkbox"
+                          className="form-checkbox h-5 w-5 text-indigo-600"
+                          checked={selectedCategories.includes(category)}
+                          onChange={() => handleCategoryChange(category)}
+                        />
+                        <span className="ml-2 text-gray-700">{category}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex flex-col space-y-2">
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      Avantage
+                    </h2>
+                    {avantageOptions.map((avantage) => (
+                      <label
+                        key={avantage}
+                        className="inline-flex items-center"
+                      >
+                        <input
+                          type="checkbox"
+                          className="form-checkbox h-5 w-5 text-indigo-600"
+                          checked={selectedAvantages.includes(avantage)}
+                          onChange={() => handleAvantageChange(avantage)}
+                        />
+                        <span className="ml-2 text-gray-700">{avantage}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Risk Cluster Chart */}
+                <RiskClusterDisplay data={riskLevelStats} />
+
+                <div className="flex flex-row justify-around items-start mb-6 w-full">
+                  <div className="flex flex-col space-y-2 h-[350px] w-1/2">
+                    <Example data={sampleData} />
+                  </div>
+                  <div className="flex flex-col space-y-2 h-[350px] w-1/2 justify-center items-center bg-white shadow rounded-lg p-6">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      nombre de cas TP
+                    </h3>
+                    <p className="text-5xl font-extrabold text-indigo-600">
+                      213K
+                    </p>
+                  </div>
+                </div>
+
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl font-bold text-gray-900">
                     Pension Data

@@ -42,6 +42,12 @@ export interface PaginatedResponse {
   meta: PaginationMeta;
 }
 
+export interface RiskLevelStats {
+  riskLevel: string;
+  count: number;
+  percentage: number;
+}
+
 interface DashboardContextType {
   pensionData: PensionData[] | null;
   loading: boolean;
@@ -57,6 +63,8 @@ interface DashboardContextType {
   pagination: PaginationMeta | null;
   setPage: (page: number, wilaya?: string) => void;
   setLimit: (limit: number, wilaya?: string) => void;
+  riskLevelStats: RiskLevelStats[] | null;
+  refreshRiskStats: (wilaya?: string) => Promise<void>;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(
@@ -75,6 +83,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
     null
   );
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
+  const [riskLevelStats, setRiskLevelStats] = useState<RiskLevelStats[] | null>(null);
 
   const fetchData = useCallback(
     async (page: number = 1, limit: number = 10, wilaya?: string) => {
@@ -96,6 +105,21 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
         setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
         setLoading(false);
+      }
+    },
+    [token, user?.role]
+  );
+
+  const fetchRiskLevelStats = useCallback(
+    async (wilaya?: string) => {
+      if (!token || !user?.role) return;
+
+      try {
+        const stats = await DashboardService.getRiskLevelStats(token, user.role, wilaya);
+        setRiskLevelStats(stats);
+      } catch (err) {
+        console.error("Error fetching risk level stats:", err);
+        setError(err instanceof Error ? err.message : "An error occurred");
       }
     },
     [token, user?.role]
@@ -136,9 +160,17 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
     [fetchData]
   );
 
+  const refreshRiskStats = useCallback(
+    async (wilaya?: string) => {
+      fetchRiskLevelStats(wilaya);
+    },
+    [fetchRiskLevelStats]
+  );
+
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    fetchRiskLevelStats();
+  }, [fetchData, fetchRiskLevelStats]);
 
   return (
     <DashboardContext.Provider
@@ -153,6 +185,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
         pagination,
         setPage: handleSetPage,
         setLimit: handleSetLimit,
+        riskLevelStats,
+        refreshRiskStats,
       }}
     >
       {children}

@@ -1,6 +1,7 @@
 import type {
   PensionData,
   PaginatedResponse,
+  RiskLevelStats,
 } from "../contexts/DashboardContext";
 
 const API_BASE_URL = "http://localhost:8080/api/v1";
@@ -101,6 +102,58 @@ const DashboardService = {
       return data as PensionData;
     } catch (error) {
       console.error("Error fetching pension data:", error);
+      throw error;
+    }
+  },
+
+  getRiskLevelStats: async (
+    token: string,
+    role: string,
+    wilaya?: string
+  ): Promise<RiskLevelStats[]> => {
+    if (!token) {
+      throw new Error("No authentication token provided");
+    }
+    if (!role || (role !== "admin" && role !== "user")) {
+      throw new Error("Invalid or missing user role");
+    }
+
+    try {
+      const queryParams = new URLSearchParams();
+      if (wilaya) {
+        queryParams.append("wilaya", wilaya);
+      }
+
+      const endpoint =
+        role === "admin" ? "admin/pensions/risk-stats" : "pensions/risk-stats";
+      const url = `${API_BASE_URL}/${endpoint}?${queryParams.toString()}`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token.trim()}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 401) {
+          throw new Error("Invalid or expired token");
+        }
+        throw new Error(
+          errorData.message || "Failed to fetch risk level stats"
+        );
+      }
+
+      const data = await response.json();
+      if (!Array.isArray(data)) {
+        throw new Error(
+          "Invalid response format: expected an array of risk stats"
+        );
+      }
+      return data as RiskLevelStats[];
+    } catch (error) {
+      console.error("Error fetching risk level stats:", error);
       throw error;
     }
   },

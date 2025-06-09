@@ -13,4 +13,7 @@ func NewPensionRouter(router *gin.RouterGroup, pensionHandler *api.PensionHandle
 	router.POST("/pensions", pensionHandler.CreatePension)
 	router.PUT("/pensions/:id", pensionHandler.UpdatePension)
 	router.DELETE("/pensions/:id", pensionHandler.DeletePension)
+
+	// Risk stats route
+	router.GET("/pensions/risk-stats", pensionHandler.GetRiskLevelStats)
 }
