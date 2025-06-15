@@ -20,13 +20,26 @@ const RiskClusterDisplay: React.FC<RiskClusterDisplayProps> = ({ data }) => {
     "Moyen risque": "bg-yellow-500",
   };
 
+  // Sort the data to ensure Moyen risque is second
+  const sortedData = [...data].sort((a, b) => {
+    const order = {
+      "Bas risque": 1,
+      "Moyen risque": 2,
+      "Haut risque": 3,
+    };
+    return (
+      order[a.riskLevel as keyof typeof order] -
+      order[b.riskLevel as keyof typeof order]
+    );
+  });
+
   return (
     <div className="bg-white shadow rounded-lg p-6 mb-6">
       <h2 className="text-xl font-bold text-gray-900 mb-4">
         Nombre de cas TP par cluster
       </h2>
       <div className="space-y-4">
-        {data.map((item) => (
+        {sortedData.map((item) => (
           <div key={item.riskLevel} className="flex items-center space-x-4">
             <div className="w-32 text-right text-gray-700 font-medium">
               {item.riskLevel}
