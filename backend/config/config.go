@@ -30,10 +30,10 @@ func LoadConfig() (*Config, error) {
 	// }
 
 	config := &Config{
-		DBHost:     "localhost",
+		DBHost:     "mysql",
 		DBPort:     "3306",
 		DBUser:     "root",
-		DBPassword: "",
+		DBPassword: "root",
 		DBName:     "cnr_tp",
 		JWTSecret:  "your-secret-key",
 	}

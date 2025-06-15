@@ -7,14 +7,13 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: cnr_tp
-      MYSQL_USER: root
-      MYSQL_PASSWORD: 
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -35,7 +34,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USER: root
-      DB_PASSWORD: 
+      DB_PASSWORD: root
       DB_NAME: cnr_tp
     volumes:
       - ./excel_data:/app/excel_data
@@ -47,9 +46,11 @@ services:
       context: ./frontend/cnr
       dockerfile: Dockerfile
     ports:
-      - "80:80"
+      - "8081:80"
     depends_on:
       - backend
+    networks:
+      - cnr-network
 
 networks:
   cnr-network:
@@ -57,4 +58,4 @@ networks:
 
 volumes:
   mysql_data:
-  excel_data: 
+  excel_data:

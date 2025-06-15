@@ -8,6 +8,11 @@ This system manages pension data with the ability to import data from Excel file
 - Docker and Docker Compose
 - Excel files containing pension data
 
+### Default Admin User
+The system comes with a default admin user:
+- Email: admin@gmail.com
+- Password: admin
+
 ### Excel File Format
 The Excel file should have the following columns in order:
 1. AG (int8)
@@ -64,7 +69,7 @@ docker-compose logs -f backend
 ```
 
 ### Accessing the Application
-- Frontend: http://localhost
+- Frontend: http://localhost:8081
 - Backend API: http://localhost:8080
 
 ## Troubleshooting
