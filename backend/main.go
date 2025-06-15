@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -38,20 +40,6 @@ func main() {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	// // // Check for Excel file argument
-	// if len(os.Args) > 1 {
-	// 	excelFilePath := os.Args[1]
-	// 	log.Printf("Attempting to import data from Excel file: %s\n", excelFilePath)
-	// 	pensionRepo := repository.NewPensionRepository(db)
-	// 	pensionUseCase := usecase.NewPensionUseCase(pensionRepo)
-	// 	err := importPensionDataFromExcel(excelFilePath, pensionUseCase)
-	// 	if err != nil {
-	// 		log.Fatalf("Failed to import data from Excel: %v", err)
-	// 	}
-	// 	log.Println("Excel data import completed successfully.")
-	// 	return // Exit after import if no further server operations are needed
-	// }
-
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
 	pensionRepo := repository.NewPensionRepository(db)
@@ -59,6 +47,26 @@ func main() {
 	// Initialize use cases
 	userUseCase := usecase.NewUserUseCase(userRepo)
 	pensionUseCase := usecase.NewPensionUseCase(pensionRepo)
+
+	// Check for Excel files in the mounted directory
+	excelDir := "/app/excel_data"
+	files, err := os.ReadDir(excelDir)
+	if err != nil {
+		log.Printf("Warning: Could not read excel directory: %v", err)
+	} else {
+		for _, file := range files {
+			if filepath.Ext(file.Name()) == ".xlsx" || filepath.Ext(file.Name()) == ".xls" {
+				excelFilePath := filepath.Join(excelDir, file.Name())
+				log.Printf("Found Excel file: %s", excelFilePath)
+				err := importPensionDataFromExcel(excelFilePath, pensionUseCase)
+				if err != nil {
+					log.Printf("Failed to import data from Excel file %s: %v", file.Name(), err)
+				} else {
+					log.Printf("Successfully imported data from %s", file.Name())
+				}
+			}
+		}
+	}
 
 	// Initialize handlers
 	userHandler := api.NewUserHandler(userUseCase)

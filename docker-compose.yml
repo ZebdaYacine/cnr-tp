@@ -5,16 +5,16 @@ services:
     image: mysql:8.0
     container_name: cnr-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: cnr_tp
+      MYSQL_USER: root
+      MYSQL_PASSWORD: 
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${DB_USER}", "-p${DB_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -34,9 +34,11 @@ services:
     environment:
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
+      DB_USER: root
+      DB_PASSWORD: 
+      DB_NAME: cnr_tp
+    volumes:
+      - ./excel_data:/app/excel_data
     networks:
       - cnr-network
 
@@ -54,4 +56,5 @@ networks:
     driver: bridge
 
 volumes:
-  mysql_data: 
+  mysql_data:
+  excel_data: 
