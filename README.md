@@ -19,8 +19,8 @@ The Excel file should have the following columns in order:
 2. AVT (int8)
 3. NPens (string)
 4. EtatPens (string)
-5. DateNais (datetime)
-6. DateJouis (datetime)
+5. DateNais (datetime)  like this 1983-10-01 00:00:00
+6. DateJouis (datetime) like this 1922-12-31 00:00:00
 7. SexeTP (string)
 8. NetMens (float64)
 9. TauxD (float64)
@@ -41,15 +41,9 @@ mkdir excel_data
 
 2. Place your Excel files (.xlsx or .xls) in the `excel_data` directory.
 
-3. Create a `.env` file in the project root with the following variables:
-```
-DB_ROOT_PASSWORD=your_root_password
-DB_NAME=your_database_name
-DB_USER=your_database_user
-DB_PASSWORD=your_database_password
-```
 
-4. Start the application:
+
+3. Start the application:
 ```bash
 docker-compose up -d
 ```
