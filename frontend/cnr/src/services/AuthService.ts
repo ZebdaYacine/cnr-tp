@@ -8,7 +8,7 @@ interface AuthResponse {
   };
 }
 
-const API_BASE_URL = "/api/v1";
+const API_BASE_URL = "http://localhost:5999/api/v1";
 
 const AuthService = {
   login: async (email: string, password: string): Promise<AuthResponse> => {
@@ -37,7 +37,7 @@ const AuthService = {
       // Validate user data structure
       if (
         !data.user.id ||
-        !data.user.name ||
+        data.user.name === undefined ||
         !data.user.email ||
         !data.user.role
       ) {

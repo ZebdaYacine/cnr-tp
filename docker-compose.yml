@@ -16,7 +16,8 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
     networks:
       - cnr-network
 
@@ -26,7 +27,7 @@ services:
       dockerfile: Dockerfile
     container_name: cnr-backend
     ports:
-      - "8080:8080"
+      - "5999:8080"
     depends_on:
       mysql:
         condition: service_healthy

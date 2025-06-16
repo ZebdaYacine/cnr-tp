@@ -20,22 +20,13 @@ func LoadConfig() (*Config, error) {
 	// 	return nil, fmt.Errorf("error loading .env file: %v", err)
 	// }
 
-	// config := &Config{
-	// 	DBHost:     getEnv("DB_HOST", "localhost"),
-	// 	DBPort:     getEnv("DB_PORT", "3306"),
-	// 	DBUser:     getEnv("DB_USER", "root"),
-	// 	DBPassword: getEnv("DB_PASSWORD", ""),
-	// 	DBName:     getEnv("DB_NAME", "cnr_tp"),
-	// 	JWTSecret:  getEnv("JWT_SECRET", "your-secret-key"),
-	// }
-
 	config := &Config{
-		DBHost:     "mysql",
-		DBPort:     "3306",
-		DBUser:     "root",
-		DBPassword: "root",
-		DBName:     "cnr_tp",
-		JWTSecret:  "your-secret-key",
+		DBHost:     getEnv("DB_HOST", "mysql"),
+		DBPort:     getEnv("DB_PORT", "3306"),
+		DBUser:     getEnv("DB_USER", "root"),
+		DBPassword: getEnv("DB_PASSWORD", "root"),
+		DBName:     getEnv("DB_NAME", "cnr_tp"),
+		JWTSecret:  getEnv("JWT_SECRET", "your-secret-key"),
 	}
 
 	return config, nil
