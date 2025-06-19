@@ -185,7 +185,7 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-white">
             {selectedCategories.length > 0
-              ? "Cas par catégorie"
+              ? "Cas par Type de TP"
               : "Toutes les catégories"}
           </h3>
           <svg

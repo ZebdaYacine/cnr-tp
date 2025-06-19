@@ -8,7 +8,7 @@ interface AuthResponse {
   };
 }
 
-const API_BASE_URL = "http://localhost:5999/api/v1";
+const API_BASE_URL = "http://localhost:8080/api/v1";
 
 const AuthService = {
   login: async (email: string, password: string): Promise<AuthResponse> => {

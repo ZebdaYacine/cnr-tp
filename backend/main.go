@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -48,56 +47,56 @@ func main() {
 	userUseCase := usecase.NewUserUseCase(userRepo)
 	pensionUseCase := usecase.NewPensionUseCase(pensionRepo)
 
-	// Check for Excel files in the mounted directory
-	excelDir := "./excel_data"
-	log.Printf("Looking for Excel files in directory: %s", excelDir)
+	// // Check for Excel files in the mounted directory
+	// excelDir := "./excel_data"
+	// log.Printf("Looking for Excel files in directory: %s", excelDir)
 
-	// Check if directory exists
-	if _, err := os.Stat(excelDir); os.IsNotExist(err) {
-		log.Printf("Excel directory does not exist: %s", excelDir)
-	} else {
-		files, err := os.ReadDir(excelDir)
-		if err != nil {
-			log.Printf("Error reading excel directory: %v", err)
-		} else {
-			if len(files) == 0 {
-				log.Printf("No files found in directory: %s", excelDir)
-			} else {
-				log.Printf("Found %d files in directory", len(files))
-				for _, file := range files {
-					log.Printf("Found file: %s", file.Name())
-				}
-			}
+	// // Check if directory exists
+	// if _, err := os.Stat(excelDir); os.IsNotExist(err) {
+	// 	log.Printf("Excel directory does not exist: %s", excelDir)
+	// } else {
+	// 	files, err := os.ReadDir(excelDir)
+	// 	if err != nil {
+	// 		log.Printf("Error reading excel directory: %v", err)
+	// 	} else {
+	// 		if len(files) == 0 {
+	// 			log.Printf("No files found in directory: %s", excelDir)
+	// 		} else {
+	// 			log.Printf("Found %d files in directory", len(files))
+	// 			for _, file := range files {
+	// 				log.Printf("Found file: %s", file.Name())
+	// 			}
+	// 		}
 
-			for _, file := range files {
-				if filepath.Ext(file.Name()) == ".xlsx" || filepath.Ext(file.Name()) == ".xls" {
-					excelFilePath := filepath.Join(excelDir, file.Name())
-					log.Printf("Processing Excel file: %s", excelFilePath)
+	// 		for _, file := range files {
+	// 			if filepath.Ext(file.Name()) == ".xlsx" || filepath.Ext(file.Name()) == ".xls" {
+	// 				excelFilePath := filepath.Join(excelDir, file.Name())
+	// 				log.Printf("Processing Excel file: %s", excelFilePath)
 
-					// Check if file exists and is readable
-					if _, err := os.Stat(excelFilePath); os.IsNotExist(err) {
-						log.Printf("Excel file does not exist: %s", excelFilePath)
-						continue
-					}
+	// 				// Check if file exists and is readable
+	// 				if _, err := os.Stat(excelFilePath); os.IsNotExist(err) {
+	// 					log.Printf("Excel file does not exist: %s", excelFilePath)
+	// 					continue
+	// 				}
 
-					// Try to open the file first to check permissions
-					file, err := os.Open(excelFilePath)
-					if err != nil {
-						log.Printf("Error opening file %s: %v", excelFilePath, err)
-						continue
-					}
-					file.Close()
+	// 				// Try to open the file first to check permissions
+	// 				file, err := os.Open(excelFilePath)
+	// 				if err != nil {
+	// 					log.Printf("Error opening file %s: %v", excelFilePath, err)
+	// 					continue
+	// 				}
+	// 				file.Close()
 
-					err = importPensionDataFromExcel(excelFilePath, pensionUseCase)
-					if err != nil {
-						log.Printf("Failed to import data from Excel file %s: %v", file.Name(), err)
-					} else {
-						log.Printf("Successfully imported data from %s", file.Name())
-					}
-				}
-			}
-		}
-	}
+	// 				err = importPensionDataFromExcel(excelFilePath, pensionUseCase)
+	// 				if err != nil {
+	// 					log.Printf("Failed to import data from Excel file %s: %v", file.Name(), err)
+	// 				} else {
+	// 					log.Printf("Successfully imported data from %s", file.Name())
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	// Initialize handlers
 	userHandler := api.NewUserHandler(userUseCase)

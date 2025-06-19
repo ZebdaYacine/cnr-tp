@@ -115,11 +115,11 @@ func (r *pensionRepository) GetRiskLevelStats(wilaya string, categories []string
 	for _, res := range results {
 		riskLevel := "Unknown Risk"
 		switch res.NiveauRisquePredit {
-		case 2:
+		case 0:
 			riskLevel = "Bas risque"
 		case 1:
 			riskLevel = "Moyen risque"
-		case 0:
+		case 2:
 			riskLevel = "Haut risque"
 		}
 

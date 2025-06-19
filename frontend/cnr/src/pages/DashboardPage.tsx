@@ -98,7 +98,12 @@ const DashboardPage: React.FC = () => {
   }, [selectedWilaya]);
 
   const categoryOptions = ["décès", "fin droit", "révision"];
-  const avantageOptions = ["Sélectionner tout", "direct", "fille majeur"];
+  const avantageOptions = [
+    "Sélectionner tout",
+    "direct",
+    "fille majeur",
+    "Veuves",
+  ];
 
   const handleCategoryChange = (category: string) => {
     setSelectedCategories((prevSelected) => {
@@ -144,19 +149,22 @@ const DashboardPage: React.FC = () => {
     });
   };
 
-  const getAvantageLabel = (avtCode: number): string => {
-    switch (avtCode) {
-      case 1:
-      case 7:
-        return "direct";
-      case 4:
-      case 9:
-        return "fille majeur";
-      case 0:
-        return "(Vide)";
-      default:
-        return "";
+  const getAvantageLabel = (avtCode: string | number): string => {
+    const code = typeof avtCode === "number" ? avtCode.toString() : avtCode;
+
+    if (["1", "7", "W", "Z", "4", "9", "G", "5"].includes(code)) {
+      return "direct";
     }
+    if (["3", "2", "F", "E", "8", "J"].includes(code)) {
+      return "Veuves";
+    }
+    if (["H", "D", "Y"].includes(code)) {
+      return "fille majeur";
+    }
+    if (code === "0") {
+      return "(Vide)";
+    }
+    return "";
   };
 
   const filteredPensionData = useMemo(() => {
