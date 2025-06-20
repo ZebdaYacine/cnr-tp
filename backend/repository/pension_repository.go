@@ -27,16 +27,21 @@ func (r *pensionRepository) FindByID(id uint) (*domain.PensionData, error) {
 	return &pension, nil
 }
 
-func (r *pensionRepository) FindAll() ([]domain.PensionData, int64, error) {
+func (r *pensionRepository) FindAll(avantages []string) ([]domain.PensionData, int64, error) {
 	var pensions []domain.PensionData
 	var total int64
 
-	err := r.db.Model(&domain.PensionData{}).Count(&total).Error
+	db := r.db.Model(&domain.PensionData{})
+	if len(avantages) > 0 {
+		db = db.Where("avt IN (?)", avantages)
+	}
+
+	err := db.Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	err = r.db.Find(&pensions).Error
+	err = db.Find(&pensions).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -67,14 +72,16 @@ func (r *pensionRepository) GetRiskLevelStats(wilaya string, categories []string
 	}
 
 	if len(avantages) > 0 {
-		var avtCodes []int8
+		var avtCodes []string
 		includeEmpty := false
 		for _, avt := range avantages {
 			switch avt {
 			case "direct":
-				avtCodes = append(avtCodes, 1, 7)
+				avtCodes = append(avtCodes, "1", "7", "W", "Z", "4", "9", "G", "5")
 			case "fille majeur":
-				avtCodes = append(avtCodes, 4, 9)
+				avtCodes = append(avtCodes, "H", "D", "Y")
+			case "Veuves":
+				avtCodes = append(avtCodes, "3", "2", "F", "E", "8", "J")
 			case "(Vide)":
 				includeEmpty = true
 			}

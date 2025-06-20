@@ -18,8 +18,8 @@ func (u *pensionUseCase) GetPension(id uint) (*domain.PensionData, error) {
 	return u.pensionRepo.FindByID(id)
 }
 
-func (u *pensionUseCase) GetAllPensions() ([]domain.PensionData, int64, error) {
-	return u.pensionRepo.FindAll()
+func (u *pensionUseCase) GetAllPensions(avantages []string) ([]domain.PensionData, int64, error) {
+	return u.pensionRepo.FindAll(avantages)
 }
 
 func (u *pensionUseCase) UpdatePension(pension *domain.PensionData) error {

@@ -10,7 +10,8 @@ const DashboardService = {
   getPensions: async (
     token: string,
     role: string,
-    wilaya?: string
+    wilaya?: string,
+    avantages?: string[]
   ): Promise<PaginatedResponse> => {
     if (!token) {
       throw new Error("No authentication token provided");
@@ -23,6 +24,9 @@ const DashboardService = {
       const queryParams = new URLSearchParams();
       if (wilaya) {
         queryParams.append("ag", wilaya);
+      }
+      if (avantages && avantages.length > 0) {
+        queryParams.append("avantages", avantages.join(","));
       }
 
       // For admin users, use /admin/pensions

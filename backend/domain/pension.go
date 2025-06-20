@@ -5,7 +5,7 @@ import "time"
 type PensionData struct {
 	ID                 uint      `json:"id"`
 	AG                 int8      `json:"ag"`
-	AVT                int8      `json:"avt"`
+	AVT                string    `json:"avt"`
 	NPens              string    `json:"npens"`
 	EtatPens           string    `json:"etatpens"`
 	DateNais           time.Time `json:"datenais"`
@@ -26,7 +26,7 @@ type PensionData struct {
 type PensionRepository interface {
 	Create(pension *PensionData) error
 	FindByID(id uint) (*PensionData, error)
-	FindAll() ([]PensionData, int64, error)
+	FindAll(avantages []string) ([]PensionData, int64, error)
 	Update(pension *PensionData) error
 	Delete(id uint) error
 	GetRiskLevelStats(wilaya string, categories []string, avantages []string) ([]RiskLevelStats, error)
@@ -35,7 +35,7 @@ type PensionRepository interface {
 type PensionUseCase interface {
 	CreatePension(pension *PensionData) error
 	GetPension(id uint) (*PensionData, error)
-	GetAllPensions() ([]PensionData, int64, error)
+	GetAllPensions(avantages []string) ([]PensionData, int64, error)
 	UpdatePension(pension *PensionData) error
 	DeletePension(id uint) error
 	GetRiskLevelStats(wilaya string, categories []string, avantages []string) ([]RiskLevelStats, error)

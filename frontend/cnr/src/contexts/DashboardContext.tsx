@@ -12,7 +12,7 @@ import DashboardService from "../services/DashboardService";
 export interface PensionData {
   id: number;
   ag: number;
-  avt: number;
+  avt: string;
   npens: string;
   etatpens: string;
   datenais: string;

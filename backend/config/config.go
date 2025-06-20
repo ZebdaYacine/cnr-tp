@@ -23,7 +23,7 @@ func LoadConfig() (*Config, error) {
 	}
 
 	config := &Config{
-		DBHost:     getEnv("DB_HOST", "mysql"),
+		DBHost:     getEnv("DB_HOST", "localhost"),
 		DBPort:     getEnv("DB_PORT", "3306"),
 		DBUser:     getEnv("DB_USER", "root"),
 		DBPassword: getEnv("DB_PASSWORD", ""),

@@ -4,6 +4,7 @@ import (
 	"cnr-tp/domain"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,7 +18,13 @@ func NewPensionHandler(pensionUseCase domain.PensionUseCase) *PensionHandler {
 }
 
 func (h *PensionHandler) GetPensions(c *gin.Context) {
-	pensions, total, err := h.pensionUseCase.GetAllPensions()
+	avantagesParam := c.Query("avantages")
+	var avantages []string
+	if avantagesParam != "" {
+		avantages = strings.Split(avantagesParam, ",")
+	}
+
+	pensions, total, err := h.pensionUseCase.GetAllPensions(avantages)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch pension data"})
 		return

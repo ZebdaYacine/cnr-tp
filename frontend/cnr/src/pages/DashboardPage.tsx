@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useDashboard } from "../contexts/DashboardContext";
 import { Map } from "algeria-map-ts";
@@ -38,6 +38,7 @@ const DashboardPage: React.FC = () => {
   const [selectedWilayaName, setSelectedWilayaName] = useState<string | null>(
     null
   );
+  const [selectedTypeTP, setSelectedTypeTP] = useState<string | null>(null);
 
   const handleRegionSelect = (wilaya: string) => {
     // Find the wilaya code from the data object
@@ -129,11 +130,10 @@ const DashboardPage: React.FC = () => {
         const currentlyAllSelected = allSelectableAvantages.every((item) =>
           prevSelected.includes(item)
         );
-
         if (currentlyAllSelected) {
-          newSelected = []; // Deselect all
+          newSelected = [];
         } else {
-          newSelected = allSelectableAvantages; // Select all selectable
+          newSelected = allSelectableAvantages;
         }
       } else {
         newSelected = prevSelected.includes(avantage)
@@ -167,71 +167,60 @@ const DashboardPage: React.FC = () => {
     return "";
   };
 
+  const typeTPOptions = ["décès", "Âge Moyen Cat", "fin de droit"];
+
+  const getCategoryByAgeMoyenCat = (ageMoyenCat: number): string => {
+    if (ageMoyenCat == 79 || ageMoyenCat == 77) return "décès";
+    if (ageMoyenCat == 33 || ageMoyenCat == 48) return "fin droit";
+    if (
+      ageMoyenCat == 64 ||
+      ageMoyenCat == 68 ||
+      ageMoyenCat == 72 ||
+      ageMoyenCat == 74 ||
+      ageMoyenCat == 75
+    )
+      return "révision";
+    return "";
+  };
+
   const filteredPensionData = useMemo(() => {
     if (!pensionData) return null;
     let filtered = pensionData;
 
-    // Filter by wilaya code if selected (map filter)
+    console.log("Filtering pension data...", pensionData);
+
+    // Filtre par wilaya (si sélectionnée)
     if (selectedWilaya) {
       filtered = filtered.filter(
         (pension) => pension.ag === selectedWilaya.code
       );
     }
 
-    // Filter by manual wilaya code input (if no map selection)
-    if (!selectedWilaya && manualWilayaCode) {
-      const code = parseInt(manualWilayaCode);
-      if (!isNaN(code)) {
-        filtered = filtered.filter((pension) => pension.ag === code);
-      }
-    }
-
-    // Filter by selected wilaya name (if no map selection or manual code)
-    if (!selectedWilaya && !manualWilayaCode && selectedWilayaName) {
-      const wilayaData = data[selectedWilayaName as keyof typeof data];
-      const wilayaCode = wilayaData?.value;
-      if (wilayaCode) {
-        filtered = filtered.filter((pension) => pension.ag === wilayaCode);
-      }
-    }
-
-    // Filter by selected categories
+    // Filtre par catégorie (basé sur age_moyen_cat)
     if (selectedCategories.length > 0) {
       filtered = filtered.filter((pension) =>
-        selectedCategories.includes(pension.etatpens)
+        selectedCategories.includes(
+          getCategoryByAgeMoyenCat(Number(pension.age_moyen_cat))
+        )
       );
     }
 
-    // Filter by selected avantages
+    // Filtre par avantage
     if (selectedAvantages.length > 0) {
-      if (selectedAvantages.includes("Sélectionner tout")) {
-        filtered = filtered.filter((pension) => {
-          const label = getAvantageLabel(pension.avt);
-          return avantageOptions
-            .filter((opt) => opt !== "(Vide)")
-            .includes(label);
-        });
-      } else if (selectedAvantages.includes("(Vide)")) {
-        filtered = filtered.filter((pension) => {
-          const label = getAvantageLabel(pension.avt);
+      filtered = filtered.filter((pension) => {
+        const label = getAvantageLabel(pension.avt);
+        if (selectedAvantages.includes("Sélectionner tout")) {
+          return label !== "";
+        }
+        if (selectedAvantages.includes("(Vide)")) {
           return selectedAvantages.includes(label) || label === "";
-        });
-      } else {
-        filtered = filtered.filter((pension) =>
-          selectedAvantages.includes(getAvantageLabel(pension.avt))
-        );
-      }
+        }
+        return selectedAvantages.includes(label);
+      });
     }
 
     return filtered;
-  }, [
-    pensionData,
-    selectedWilaya,
-    manualWilayaCode,
-    selectedCategories,
-    selectedAvantages,
-    selectedWilayaName,
-  ]);
+  }, [pensionData, selectedWilaya, selectedCategories, selectedAvantages]);
 
   // Calculate gender statistics based on filtered data
   const genderStats = useMemo(() => {
@@ -249,6 +238,50 @@ const DashboardPage: React.FC = () => {
       { name: "Femme", value: femaleCount },
     ];
   }, [filteredPensionData]);
+
+  const clusterStats = useMemo(() => {
+    if (!filteredPensionData) return [];
+
+    // Filtrer par catégorie si sélectionnée
+    let data = filteredPensionData;
+    if (selectedCategories.length > 0) {
+      data = data.filter((pension) =>
+        selectedCategories.includes(
+          getCategoryByAgeMoyenCat(Number(pension.age_moyen_cat))
+        )
+      );
+    }
+
+    // Filtrer par avantage si sélectionné
+    if (selectedAvantages.length > 0) {
+      data = data.filter((pension) => {
+        const label = getAvantageLabel(pension.avt);
+        if (selectedAvantages.includes("Sélectionner tout")) {
+          return label !== "";
+        }
+        if (selectedAvantages.includes("(Vide)")) {
+          return selectedAvantages.includes(label) || label === "";
+        }
+        return selectedAvantages.includes(label);
+      });
+    }
+
+    const counts: Record<string, number> = {};
+    data.forEach((p) => {
+      let label = "Inconnu";
+      const riskValue = String(p.niveau_risque_predit);
+      if (riskValue === "0") label = "Bas risque";
+      else if (riskValue === "1") label = "Moyen risque";
+      else if (riskValue === "2") label = "Haut risque";
+      counts[label] = (counts[label] || 0) + 1;
+    });
+    const total = data.length;
+    return Object.entries(counts).map(([riskLevel, count]) => ({
+      riskLevel,
+      count,
+      percentage: total > 0 ? (count / total) * 100 : 0,
+    }));
+  }, [filteredPensionData, selectedCategories, selectedAvantages]);
 
   const handleLogout = () => {
     logout();
@@ -289,6 +322,11 @@ const DashboardPage: React.FC = () => {
 
   const dataKeys = Object.keys(data);
   const wilayaNames = dataKeys.sort(); // Sort wilaya names alphabetically
+
+  const typeTPCaseCount = filteredPensionData ? filteredPensionData.length : 0;
+  const totalCaseCount = pensionData ? pensionData.length : 0;
+  const typeTPCasePercent =
+    totalCaseCount > 0 ? (typeTPCaseCount / totalCaseCount) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -434,13 +472,36 @@ const DashboardPage: React.FC = () => {
                   handleAvantageChange={handleAvantageChange}
                 />
 
-                <RiskClusterDisplay data={riskLevelStats} />
+                <div className="mb-4">
+                  <label
+                    htmlFor="typeTPSelect"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Filtrer par Type de TP :
+                  </label>
+                  <select
+                    id="typeTPSelect"
+                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                    value={selectedTypeTP || ""}
+                    onChange={(e) => setSelectedTypeTP(e.target.value || null)}
+                  >
+                    <option value="">Tous les types de TP</option>
+                    {typeTPOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <RiskClusterDisplay data={clusterStats} />
 
                 <StatsDisplay
                   pensionData={pensionData}
                   selectedWilaya={selectedWilaya}
                   selectedCategories={selectedCategories}
                   selectedAvantages={selectedAvantages}
+                  typeTPCaseCount={typeTPCaseCount}
                 />
 
                 <div className="flex justify-between items-center mb-6">
@@ -489,6 +550,16 @@ const DashboardPage: React.FC = () => {
                   onPageChange={handlePageChange}
                   onLimitChange={handleLimitChange}
                 />
+
+                {/* <div className="bg-pink-500 rounded-lg shadow p-4 flex-1 text-center">
+                  <div className="text-3xl font-bold text-white">
+                    {typeTPCaseCount.toLocaleString()}
+                  </div>
+                  <div className="text-white text-sm">Cas par Type de TP</div>
+                  <div className="text-white text-xs mt-1">
+                    {typeTPCasePercent.toFixed(1)}% du total
+                  </div>
+                </div> */}
               </div>
             </div>
           </div>

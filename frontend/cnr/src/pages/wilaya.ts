@@ -23,7 +23,7 @@ export const data: WilayaMap = {
   Tlemcen: { value: 13, color: "#f9fff0" },
   Tiaret: { value: 14, color: "#e5f9eb" },
   "Tizi Ouzou": { value: 15, color: "#ebf9f7" },
-  Alger: { value: 16, color: "#ebf9ee" },
+  Alger: { value: 95, color: "#ebf9ee" },
   Djelfa: { value: 17, color: "#ebf9ff" },
   Jijel: { value: 18, color: "#f2f9eb" },
   Sétif: { value: 19, color: "#f9ebf5" },

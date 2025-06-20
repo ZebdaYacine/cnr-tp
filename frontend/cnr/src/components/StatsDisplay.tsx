@@ -6,41 +6,46 @@ interface StatsDisplayProps {
   selectedWilaya: { name: string; code: number } | null;
   selectedCategories: string[];
   selectedAvantages: string[];
+  typeTPCaseCount: number;
 }
 
-const getAvantageLabel = (avtCode: number): string => {
-  switch (avtCode) {
-    case 1:
-    case 7:
-      return "direct";
-    case 4:
-    case 9:
-      return "fille majeur";
-    case 0:
-      return "(Vide)";
-    default:
-      return "";
+const getAvantageLabel = (avtCode: string | number): string => {
+  const code = typeof avtCode === "number" ? avtCode.toString() : avtCode;
+
+  if (["1", "7", "W", "Z", "4", "9", "G", "5"].includes(code)) {
+    return "direct";
   }
+  if (["3", "2", "F", "E", "8", "J"].includes(code)) {
+    return "Veuves";
+  }
+  if (["H", "D", "Y"].includes(code)) {
+    return "fille majeur";
+  }
+  if (code === "0") {
+    return "(Vide)";
+  }
+  return "";
 };
 
-const getRiskLevelLabel = (riskLevel: number): string => {
-  switch (riskLevel) {
-    case 0:
-      return "Bas risque";
-    case 1:
-      return "Moyen risque";
-    case 2:
-      return "Haut risque";
-    default:
-      return "Inconnu";
-  }
-};
+// const getRiskLevelLabel = (riskLevel: number): string => {
+//   switch (riskLevel) {
+//     case 0:
+//       return "Bas risque";
+//     case 1:
+//       return "Moyen risque";
+//     case 2:
+//       return "Haut risque";
+//     default:
+//       return "Inconnu";
+//   }
+// };
 
 const StatsDisplay: React.FC<StatsDisplayProps> = ({
   pensionData,
   selectedWilaya,
   selectedCategories,
   selectedAvantages,
+  typeTPCaseCount,
 }) => {
   if (!pensionData) return null;
 
@@ -180,13 +185,11 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
         </div>
       </div>
 
-      {/* Risk Category Card */}
-      <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl shadow-lg p-6 transform hover:scale-105 transition-transform duration-200">
+      {/* Type TP Case Count Card */}
+      <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 transform hover:scale-105 transition-transform duration-200">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-white">
-            {selectedCategories.length > 0
-              ? "Cas par Type de TP"
-              : "Toutes les catégories"}
+            Cas par Type de TP
           </h3>
           <svg
             className="w-8 h-8 text-white opacity-80"
@@ -198,22 +201,14 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth="2"
-              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
             />
           </svg>
         </div>
         <p className="text-4xl font-bold text-white mb-2">
-          {riskStats.toLocaleString()}
+          {typeTPCaseCount.toLocaleString()}
         </p>
-        <div className="flex items-center text-sm text-pink-100">
-          <span>{riskPercentage}% du total</span>
-          <div className="ml-2 w-24 bg-pink-200 rounded-full h-2">
-            <div
-              className="bg-white h-2 rounded-full"
-              style={{ width: `${riskPercentage}%` }}
-            ></div>
-          </div>
-        </div>
+        <p className="text-sm text-green-100">Total des cas par type de TP</p>
       </div>
     </div>
   );
